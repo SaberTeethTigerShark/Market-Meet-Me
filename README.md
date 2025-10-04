@@ -59,74 +59,74 @@ Functionality:
 
 In-Program Function Documentation
 
-//  function toggleDarkMode()
+//  function toggleDarkMode();
 //  Toggles the website's theme between light and dark modes by adding or removing the dark-mode CSS class from the <body> element.
 
 ---
 
-//  parseEmbeddedCSV()
+//  parseEmbeddedCSV();
 //  Parses CSV data embedded in the DOM element with ID 'embeddedCSV',
 //  categorizes stock symbols by sector and sub-industry, and returns a sorted list of all unique categories found.
 
 ---
 
-// categorizeStocksFromCSV()
+// categorizeStocksFromCSV();
 // Parses embedded CSV data to map stock symbols to their names, categorize them by sector and sub-industry,
 // and return a sorted list of all unique categories.
 
 ---
 
-// populateCategoryDropdown(categoryList)
+// populateCategoryDropdown(categoryList);
 // Populates a dropdown menu with category options using the provided list, resetting its contents before insertion.
 
 ---
 
-// populateTickerSuggestions()
+// populateTickerSuggestions();
 //  Generates autocomplete suggestions for stock tickers by parsing embedded CSV data and populating
 //  a datalist element with ticker-name pairs.
 
 ---
 
-//  loadSelectedStockArray()
+//  loadSelectedStockArray();
 //  Loads the selected stock category from a dropdown, deduplicates its tickers, and fetches their data in a single batch.
 
 ---
 
-//  lookupTickerByName(name, clearBoard)
+//  lookupTickerByName(name, clearBoard);
 //  Searches for a NASDAQ ticker symbol by company name using an external API,
 //  optionally clears the display, and fetches stock data if found.
 
 ---
 
-//  updateWeeksToFetch()
+//  updateWeeksToFetch();
 //  Updates the global `weeksToFetch` value based on user input and reloads the currently selected stock array accordingly.
 
 ---
 
-//  fetchManualStock()
+//  fetchManualStock();
 //  Attempts to fetch stock data using a manually entered ticker symbol,
 //  falling back to name-based lookup if no direct match is found.
 
 ---
 
-// getStockData(stockTicker)
+// getStockData(stockTicker);
 // Fetches historical stock data for a given ticker, reverses it chronologically,
 // and renders it in blocks based on the selected time range.
 
 ---
 
-//  chunkArray(array, size)
+//  chunkArray(array, size);
 //  Splits an array into smaller chunks of a specified size and returns them as a new array of arrays.
 
 ---
 
-//  getStockDataBatch(tickerArray)
+//  getStockDataBatch(tickerArray);
 //  Fetches historical stock data for multiple tickers in a single API call, renders each dataset,
 //  and recursively retries any missing tickers in manageable chunks.
 
 ---
 
-//  renderStockBlock(ticker, name, dataBlock, blockLabel, container)
+//  renderStockBlock(ticker, name, dataBlock, blockLabel, container);
 //  Renders a visual block of stock data with dynamic styling for price changes,
 //  highlighting the highest and lowest closing days.
 
