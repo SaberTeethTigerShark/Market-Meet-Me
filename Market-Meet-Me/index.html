@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <!-- Market-Meet-Me v.[Year].[Month].[Day]:[Attempt] -->
-    <title>Market-Meet-Me v.2025.10.02:01</title>
+    <title>Market-Meet-Me v.2025.10.04:01</title>
     <link rel="icon" href="icons/icon.png" type="image/x-icon">
 
     <style>
@@ -775,10 +775,12 @@
         const stockDescriptions = {};
 
         // Set your API key here
-		// Sign up on Financial Marketing Prep
-        const API_KEY = 'API KEY HERE';
+        const API_KEY = '';
 
-        function toggleDarkMode() {
+        //  function toggleDarkMode()
+        //  Toggles the website's theme between light and dark modes by adding or removing the dark-mode CSS class from the <body> element.
+
+            function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
         }
 
@@ -805,6 +807,12 @@
                             }
                         `;
         document.head.appendChild(style);
+
+        //
+        //  parseEmbeddedCSV
+        //  Parses CSV data embedded in the DOM element with ID 'embeddedCSV',
+        //  categorizes stock symbols by sector and sub-industry, and returns a sorted list of all unique categories found.
+        //
 
         function parseEmbeddedCSV() {
             const csvText = document.getElementById('embeddedCSV').textContent.trim();
@@ -837,6 +845,11 @@
             return [...categories].sort();
         }
 
+        //
+        // categorizeStocksFromCSV()
+        // Parses embedded CSV data to map stock symbols to their names, categorize them by sector and sub-industry,
+        // and return a sorted list of all unique categories.
+        //
         function categorizeStocksFromCSV() {
             const csvText = document.getElementById('embeddedCSV').textContent.trim();
             const lines = csvText.split('\n');
@@ -872,6 +885,10 @@
             return [...categories].sort();
         }
 
+        //
+        //  populateCategoryDropdown(categoryList)
+        //  Populates a dropdown menu with category options using the provided list, resetting its contents before insertion.
+        //
         function populateCategoryDropdown(categoryList) {
             const select = document.getElementById('stockArraySelectSelect');
             select.innerHTML = '<option value="">--Select--</option>';
@@ -884,6 +901,11 @@
             });
         }
 
+        //
+        //  populateTickerSuggestions()
+        //  Generates autocomplete suggestions for stock tickers by parsing embedded CSV data and populating
+        //  a datalist element with ticker-name pairs.
+        //
         function populateTickerSuggestions() {
             const datalist = document.getElementById('tickerSuggestions');
             datalist.innerHTML = '';
@@ -908,6 +930,10 @@
             });
         }
 
+        //
+        //  loadSelectedStockArray()
+        //  Loads the selected stock category from a dropdown, deduplicates its tickers, and fetches their data in a single batch.
+        //
         function loadSelectedStockArray() {
             const select = document.getElementById('stockArraySelectSelect');
             const selectedArrayName = select.value;
@@ -927,6 +953,11 @@
             getStockDataBatch(uniqueTickers);
         }
 
+        //
+        //  lookupTickerByName(name, clearBoard)
+        //  Searches for a NASDAQ ticker symbol by company name using an external API,
+        //  optionally clears the display, and fetches stock data if found.
+        //
         async function lookupTickerByName(name, clearBoard) {
             const url = `https://financialmodelingprep.com/api/v3/search?query=${encodeURIComponent(name)}&limit=1&exchange=NASDAQ&apikey=${API_KEY}`;
             const response = await fetch(url);
@@ -944,6 +975,10 @@
             getStockData(ticker);
         }
 
+        //
+        //  updateWeeksToFetch()
+        //  Updates the global `weeksToFetch` value based on user input and reloads the currently selected stock array accordingly.
+        //
         let weeksToFetch = 2; // Default to 2 weeks
         function updateWeeksToFetch() {
             const input = document.getElementById('weeksInput');
@@ -954,6 +989,11 @@
             loadSelectedStockArray();
         }
 
+        //
+        //  fetchManualStock()
+        //  Attempts to fetch stock data using a manually entered ticker symbol,
+        //  falling back to name-based lookup if no direct match is found.
+        //
         function fetchManualStock() {
             const input = document.getElementById('manualTicker').value.trim();
             if (!input) return;
@@ -973,6 +1013,11 @@
             }
         }
 
+        //
+        //  getStockData(stockTicker)
+        //  Fetches historical stock data for a given ticker, reverses it chronologically,
+        //  and renders it in blocks based on the selected time range.
+        //
         async function getStockData(stockTicker) {
             const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${stockTicker}?apikey=${API_KEY}&timeseries=${weeksToFetch * 7}`;
             try {
@@ -1010,6 +1055,11 @@
             }
         }
 
+        //
+        //  chunkArray(array, size)
+        //  Splits an array into smaller chunks of a specified size and returns them as a new array of arrays.
+        //
+
         function chunkArray(array, size) {
             const chunks = [];
             for (let i = 0; i < array.length; i += size) {
@@ -1017,6 +1067,12 @@
             }
             return chunks;
         }
+
+        //
+        //  getStockDataBatch(tickerArray)
+        //  Fetches historical stock data for multiple tickers in a single API call, renders each dataset,
+        //  and recursively retries any missing tickers in manageable chunks.
+        //
 
         async function getStockDataBatch(tickerArray) {
             const uniqueTickers = [...new Set(tickerArray)];
@@ -1076,6 +1132,12 @@
                 console.error('Error fetching batch stock data:', error);
             }
         }
+
+        //
+        //  renderStockBlock(ticker, name, dataBlock, blockLabel, container)
+        //  Renders a visual block of stock data with dynamic styling for price changes,
+        //  highlighting the highest and lowest closing days.
+        //
 
         function renderStockBlock(ticker, name, dataBlock, blockLabel, container) {
             const stockDiv = document.createElement('div');
@@ -1174,6 +1236,10 @@
 <div id="stocksContainer"></div>
 
 <script>
+
+    //  Initializes the page on load by enabling dark mode, parsing embedded CSV data,
+    //  categorizing stocks, and populating both ticker suggestions and the category dropdown.
+
     document.addEventListener('DOMContentLoaded', () => {
         console.log('Page loaded. Please select a stock array to fetch data.');
 
