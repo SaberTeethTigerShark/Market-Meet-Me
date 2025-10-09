@@ -1,0 +1,458 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+/* =========================
+   Base Styles
+========================= */
+
+#stockArraySelect,
+#topControls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    text-align: center;
+    margin: 20px auto;
+    gap: 10px;
+}
+
+#topControls {
+    gap: 15px;
+    margin: 50px auto;
+}
+
+#stocksContainer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0 auto;
+    max-width: 100%;
+    gap: 10px;
+}
+
+/* =========================
+   Stock Card
+========================= */
+.stock {
+    flex: 0 1 250px;
+    margin: 5px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.stock h2 {
+    text-align: center;
+    color: #333;
+    font-size: 14px;
+}
+
+.description {
+    text-align: center;
+    color: #777;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.stock table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.stock th,
+.stock td {
+    text-align: left;
+    padding: 5px;
+    border-bottom: 1px solid #ddd;
+    word-wrap: break-word;
+    font-size: 12px;
+}
+
+/* =========================
+   Scrollbar
+========================= */
+#stocksContainer::-webkit-scrollbar {
+    display: none;
+}
+
+/* =========================
+   Responsive
+========================= */
+@media (max-width: 600px) {
+    #stocksContainer {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        padding: 0 10px;
+    }
+    .stock {
+        width: 92.5%;
+        margin-left: 2.5%;
+    }
+    .stock th,
+    .stock td {
+        text-align: center;
+    }
+    .trade-controls {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px 0;
+    }
+    .trade-controls input[type="number"] {
+        width: 100px;
+    }
+    .portfolio-table th,
+    .portfolio-table td {
+        font-size: 12px;
+        padding: 8px 2px;
+    }
+}
+
+/* =========================
+   Status Colors
+========================= */
+.positive {
+    background-color: rgba(46,204,113,0.15);
+    border: 4px double limegreen;
+    color: white;
+}
+.negative {
+    background-color: rgba(231,76,60,0.15);
+    border: 4px double crimson;
+    color: white;
+}
+.neutral {
+    background-color: rgba(189,195,199,0.1);
+    border: 2px solid #7f8c8d;
+    color: black;
+}
+.topweeks {
+    background-color: rgba(241,196,15,0.15);
+    border: 4px double orange !important;
+    color: black;
+}
+.lowestprice {
+    background-color: rgba(142,68,173,0.15);
+    border: 4px double #8E44AD;
+    color: white;
+}
+.quarterblock {
+    border-left: 4px solid dodgerblue;
+    border-right: 4px solid dodgerblue;
+    background-color: rgba(30,144,255,0.05);
+}
+
+/* =========================
+   Controls
+========================= */
+#weeksSelector label,
+#weeksSelector select,
+#stockArraySelect label,
+#stockArraySelect select,
+#topControls label,
+#topControls input,
+#topControls select,
+#topControls button {
+    font-size: 1rem;
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-right: 8px;
+}
+
+/* =========================
+   Hamburger Menu
+========================= */
+.hamburger-menu {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1100;
+    width: 36px;
+    height: 36px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.hamburger-menu span {
+    display: block;
+    width: 28px;
+    height: 4px;
+    margin: 3px 0;
+    background: #333;
+    border-radius: 2px;
+    transition: background 0.3s;
+}
+#hamburgerDropdown {
+    position: fixed;
+    top: 50px;
+    left: 10px;
+    background: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 1200;
+    min-width: 160px;
+    display: none;
+}
+#hamburgerDropdown button {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 1rem;
+    cursor: pointer;
+    color: inherit;
+}
+#hamburgerDropdown button:hover {
+    background: #f0f0f0;
+}
+
+/* =========================
+   Trade Controls
+========================= */
+.trade-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+    padding: 10px 0;
+    background: #f7f7fa;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.trade-controls button {
+    font-size: 1.15rem;
+    font-weight: bold;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    outline: none;
+}
+.trade-controls .buy-btn {
+    background: #43e97b;
+    color: #fff;
+    border: 1px solid #43e97b;
+}
+.trade-controls .buy-btn:hover,
+.trade-controls .buy-btn:focus {
+    background: #7fffd4;
+    color: #222;
+}
+.trade-controls .sell-btn {
+    background: #e74c3c;
+    color: #fff;
+    border: 1px solid #e74c3c;
+}
+.trade-controls .sell-btn:hover,
+.trade-controls .sell-btn:focus {
+    background: #ffb3b3;
+    color: #222;
+}
+.trade-controls input[type="number"] {
+    width: 70px;
+    height: 40px;
+    font-size: 1.1rem;
+    border: 2px solid #43e97b;
+    border-radius: 8px;
+    text-align: center;
+    margin: 0 2px;
+    transition: border-color 0.2s;
+    background: #fff;
+}
+.trade-controls input[type="number"]:focus {
+    border-color: #e74c3c;
+    outline: none;
+}
+.trade-controls input[type="number"]::placeholder {
+    color: #bbb;
+    font-size: 1rem;
+}
+
+/* =========================
+   Portfolio Table
+========================= */
+.portfolio-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    margin: 24px auto 0 auto;
+}
+.portfolio-table th,
+.portfolio-table td {
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 14px;
+    vertical-align: middle;
+}
+.portfolio-table th {
+    background: #f0f4f8;
+    font-weight: bold;
+    color: #333;
+    border-bottom: 2px solid #e0e0e0;
+}
+.portfolio-table td {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+/* =========================
+   Dark Mode
+========================= */
+#darkModeToggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    padding: 8px 12px;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+#darkModeToggle:hover {
+    background-color: #555;
+}
+
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+body.dark-mode .stock {
+    background-color: #1e1e1e;
+    border-color: #444;
+    box-shadow: 0 4px 8px rgba(255,255,255,0.05);
+}
+body.dark-mode .stock h2 {
+    color: #f0f0f0;
+}
+body.dark-mode .description {
+    color: #bbb;
+}
+body.dark-mode .stock th,
+body.dark-mode .stock td {
+    color: #ddd;
+    border-bottom: 1px solid #333;
+}
+body.dark-mode .positive {
+    background-color: rgba(46,204,113,0.15);
+    border: 4px double limegreen;
+    color: limegreen;
+}
+body.dark-mode .negative {
+    background-color: rgba(231,76,60,0.15);
+    border: 4px double crimson;
+    color: crimson;
+}
+body.dark-mode .neutral {
+    background-color: rgba(189,195,199,0.1);
+    border: 2px solid #7f8c8d;
+    color: #bdc3c7;
+}
+body.dark-mode .topweeks {
+    background-color: rgba(241,196,15,0.15);
+    border: 4px double orange !important;
+    color: orange;
+}
+body.dark-mode .lowestprice {
+    background-color: rgba(142,68,173,0.15);
+    border: 4px double #8E44AD;
+    color: #8E44AD;
+}
+body.dark-mode #weeksSelector label,
+body.dark-mode #stockArraySelect label {
+    color: #ccc;
+}
+body.dark-mode #weeksSelector select,
+body.dark-mode #stockArraySelect select {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    border: 1px solid #444;
+    padding: 6px 10px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+body.dark-mode #weeksSelector select:hover,
+body.dark_mode #stockArraySelect select:hover {
+    background-color: #2a2a2a;
+    border-color: #666;
+}
+body.dark-mode .quarterblock {
+    border-left: 4px solid deepskyblue;
+    border-right: 4px solid deepskyblue;
+    background-color: rgba(30,144,255,0.1);
+    color: #cce6ff;
+}
+body.dark-mode .portfolio-table th {
+    background: #222;
+    color: #eee;
+    border-bottom: 2px solid #444;
+}
+body.dark-mode .portfolio-table td {
+    background: #181818;
+    color: #eee;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(255,255,255,0.04);
+}
+body.dark-mode .portfolio-table .return-positive {
+    color: #43e97b !important;
+    font-weight: bold;
+}
+body.dark-mode .portfolio-table .return-negative {
+    color: #e74c3c !important;
+    font-weight: bold;
+}
+body.dark-mode .portfolio-table .return-neutral {
+    color: #eee !important;
+}
+body.dark-mode .hamburger-menu {
+    background: #222;
+    border: 1px solid #444;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+body.dark-mode .hamburger-menu span {
+    background: #43e97b;
+    transition: background 0.3s;
+}
+body.dark-mode .hamburger-menu:hover,
+body.dark-mode .hamburger-menu:focus {
+    background: #333;
+    border-color: #43e97b;
+}
+body.dark-mode #hamburgerDropdown {                                                         
+    background: #181818;
+    color: #eee;
+    border-color: #43e97b;
+    box-shadow: 0 4px 16px rgba(67,233,123,0.08);
+}
+body.dark-mode #hamburgerDropdown button {
+    color: #eee;
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border-radius: 6px;
+    transition: background 0.2s, color 0.2s;
+}
+body.dark-mode #hamburgerDropdown button:hover {
+    background: #222;
+    color: #43e97b;
+}

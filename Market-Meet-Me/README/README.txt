@@ -8,8 +8,8 @@ To enable data retrieval features, you must obtain an API key from [Financial Mo
 
 Once you have your API key:
 
-1. Open the `index.html` file using a text editor such as Notepad or Notepad++.
-2. Locate the following line (approximately line 778):
+1. Open the `main.js` file using a text editor such as Notepad or Notepad++.
+2. Locate the following line (approximately line 5):
 
    const API_KEY = 'API KEY HERE';
 
@@ -44,14 +44,32 @@ Functionality:
 ---
 
 ### 🔹 `#stockArraySelect`
-- **Purpose**: Select a predefined stock category (e.g., sector or sub-industry).
-- **How to use**: Choose a category from the dropdown to load all associated stocks.
+- **Purpose**: Select a predefined stock category (e.g., sector or sub-industry), or view your portfolio.
+- **How to use**: Choose a category from the dropdown to load all associated stocks. Select **Portfolio** to view your holdings.
 
 ---
 
 ### 🔹 `#stocksContainer`
-- **Purpose**: Display fetched stock data.
-- **How to use**: This section updates automatically when stocks are fetched. No direct interaction needed.
+- **Purpose**: Display fetched stock data and portfolio information.
+- **How to use**: This section updates automatically when stocks are fetched or when the portfolio is viewed. No direct interaction needed.
+
+---
+
+### 🔹 Portfolio Management
+- **Purpose**: Track, buy, and sell stocks in a pretend portfolio.
+- **How to use**: Use the trade controls shown with each stock or in the portfolio view to buy or sell shares by dollar amount. Portfolio is saved automatically and can be viewed or hidden.
+
+---
+
+### 🔹 Trade Controls
+- **Purpose**: Buy or sell shares of a stock by dollar amount.
+- **How to use**: Enter a dollar amount and click **Buy** or **Sell**. Controls are available in both stock blocks and the portfolio table.
+
+---
+
+### 🔹 Hamburger Menu
+- **Purpose**: Access additional options and controls.
+- **How to use**: Click the hamburger icon to open or close the dropdown menu.
 
 ---
 
@@ -89,6 +107,7 @@ In-Program Function Documentation
 
 //  loadSelectedStockArray()
 //  Loads the selected stock category from a dropdown, deduplicates its tickers, and fetches their data in a single batch.
+//  If "Portfolio" is selected, displays the user's portfolio instead.
 
 ---
 
@@ -128,6 +147,56 @@ In-Program Function Documentation
 
 //  renderStockBlock(ticker, name, dataBlock, blockLabel, container)
 //  Renders a visual block of stock data with dynamic styling for price changes,
-//  highlighting the highest and lowest closing days.
+//  highlighting the highest and lowest closing days, and includes trade controls for each stock.
+
+---
+
+//  loadPortfolioFromStorage()
+//  Loads the user's portfolio from localStorage.
+
+---
+
+//  savePortfolioToStorage()
+//  Saves the user's portfolio to localStorage.
+
+---
+
+//  clearPortfolioLocalStorage()
+//  Clears the portfolio from localStorage and resets the in-memory portfolio.
+
+---
+
+//  updatePortfolio(ticker, name, price, action, qty = 1)
+//  Updates the portfolio based on buy/sell actions, recalculates average buy price, and refreshes the portfolio view if active.
+
+---
+
+//  renderTradeControls(ticker, name, lastPrice, container)
+//  Renders buy/sell controls for a stock, allowing trades by dollar amount.
+
+---
+
+//  buyByDollarAmount(ticker, name, lastPrice, inputId)
+//  Buys shares based on a user-entered dollar amount.
+
+---
+
+//  showPortfolioInStocksContainer()
+//  Displays the user's portfolio in the stocks container, including trade controls and quick fetch buttons.
+
+---
+
+//  closeHamburgerDropdown()
+//  Closes the hamburger dropdown menu.
+
+---
+
+//  togglePortfolioView()
+//  Toggles the portfolio view in the stocks container.
+
+---
+
+//  Page Initialization
+//  On page load, enables dark mode, loads the portfolio, parses and categorizes stocks, and populates ticker suggestions and category dropdown.
 
 ---
