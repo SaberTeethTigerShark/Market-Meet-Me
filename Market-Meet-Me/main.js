@@ -639,7 +639,13 @@ function togglePortfolioView() {
         stocksContainer.dataset.showingPortfolio = "false";
         btn.textContent = "Show Portfolio";
     } else {
-        // Show portfolio
+        // Show portfolio and bulk fetch latest prices
+        const tickers = Object.entries(portfolio)
+            .filter(([_, info]) => info.quantity > 0)
+            .map(([ticker, _]) => ticker);
+        if (tickers.length > 0) {
+            getStockDataBatch(tickers);
+        }
         showPortfolioInStocksContainer();
         btn.textContent = "Hide Portfolio";
     }

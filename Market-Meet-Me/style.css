@@ -274,6 +274,29 @@ body {
     transition: border-color 0.2s;
     background: #fff;
 }
+
+/* Remove number input spinners for Chrome, Safari, Edge */
+.trade-controls input[type="number"]::-webkit-outer-spin-button,
+.trade-controls input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Remove number input spinners for Firefox */
+.trade-controls input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Remove number input spinners for dark mode as well */
+body.dark-mode .trade-controls input[type="number"]::-webkit-outer-spin-button,
+body.dark-mode .trade-controls input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+body.dark-mode .trade-controls input[type="number"] {
+    -moz-appearance: textfield;
+}
+
 .trade-controls input[type="number"]:focus {
     border-color: #e74c3c;
     outline: none;
@@ -309,6 +332,16 @@ body {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.portfolio-table input[type="number"]::-webkit-outer-spin-button,
+.portfolio-table input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.portfolio-table input[type="number"] {
+    -moz-appearance: textfield;
 }
 
 /* =========================
@@ -455,4 +488,60 @@ body.dark-mode #hamburgerDropdown button {
 body.dark-mode #hamburgerDropdown button:hover {
     background: #222;
     color: #43e97b;
+}
+body.dark-mode .trade-controls {
+    background: linear-gradient(90deg, #181818 0%, #232a2f 100%);
+    box-shadow: 0 2px 12px rgba(67,233,123,0.08), 0 1px 4px rgba(0,0,0,0.18);
+    border-radius: 12px;
+    border: 1px solid #222;
+}
+
+body.dark-mode .trade-controls .buy-btn {
+    background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    color: #222;
+    border: 1px solid #43e97b;
+    box-shadow: 0 2px 8px rgba(67,233,123,0.12);
+}
+
+body.dark-mode .trade-controls .buy-btn:hover,
+body.dark-mode .trade-controls .buy-btn:focus {
+    background: linear-gradient(90deg, #7fffd4 0%, #43e97b 100%);
+    color: #222;
+    border-color: #7fffd4;
+}
+
+body.dark-mode .trade-controls .sell-btn {
+    background: linear-gradient(90deg, #e74c3c 0%, #ffb3b3 100%);
+    color: #222;
+    border: 1px solid #e74c3c;
+    box-shadow: 0 2px 8px rgba(231,76,60,0.12);
+}
+
+body.dark-mode .trade-controls .sell-btn:hover,
+body.dark-mode .trade-controls .sell-btn:focus {
+    background: linear-gradient(90deg, #ffb3b3 0%, #e74c3c 100%);
+    color: #222;
+    border-color: #ffb3b3;
+}
+
+body.dark-mode .trade-controls input[type="number"] {
+    background: #232a2f;
+    color: #eee;
+    border: 2px solid #43e97b;
+}
+
+body.dark-mode .trade-controls input[type="number"]:focus {
+    border-color: #e74c3c;
+    background: #181818;
+    color: #fff;
+}
+
+body.dark-mode .portfolio-table input[type="number"]::-webkit-outer-spin-button,
+body.dark-mode .portfolio-table input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+body.dark-mode .portfolio-table input[type="number"] {
+    -moz-appearance: textfield;
 }
