@@ -1,4 +1,4 @@
-const stockArrays = {};
+﻿const stockArrays = {};
 const stockDescriptions = {};
 
 // Set your API key here
@@ -290,46 +290,74 @@ async function getStockDataBatch(tickerArray) {
 
         const stocksContainer = document.getElementById('stocksContainer');
 
-        if (!Array.isArray(data.historicalStockList)) {
-            console.warn('Unexpected batch format:', data);
+        // Handle single-ticker response
+        if (data.historical && data.symbol) {
+            const stockName = stockDescriptions[data.symbol] || data.symbol;
+            const historical = data.historical;
+            if (Array.isArray(historical) && historical.length) {
+                historical.reverse();
+                if (weeksToFetch >= 16) {
+                    const blockSize = 90;
+                    for (let i = 0; i < historical.length; i += blockSize) {
+                        const block = historical.slice(i, i + blockSize);
+                        const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
+                        renderStockBlock(data.symbol, stockName, block, blockLabel, stocksContainer);
+                    }
+                } else {
+                    renderStockBlock(data.symbol, stockName, historical, null, stocksContainer);
+                }
+            } else {
+                console.warn(`No historical data available for ticker: ${data.symbol}`);
+            }
             return;
         }
 
-        const returnedSymbols = new Set(data.historicalStockList.map(stock => stock.symbol));
-
-        // Render returned stocks
-        data.historicalStockList.forEach(stock => {
-            const { symbol, historical } = stock;
-            if (!Array.isArray(historical) || !historical.length) {
-                console.warn(`No historical data available for ticker: ${symbol}`);
-                return;
-            }
-
-            const stockName = stockDescriptions[symbol] || symbol;
-            historical.reverse();
-
-            if (weeksToFetch >= 16) {
-                const blockSize = 90;
-                for (let i = 0; i < historical.length; i += blockSize) {
-                    const block = historical.slice(i, i + blockSize);
-                    const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
-                    renderStockBlock(symbol, stockName, block, blockLabel, stocksContainer);
+        // Handle batch response
+        if (Array.isArray(data.historicalStockList)) {
+            const returnedSymbols = new Set(data.historicalStockList.map(stock => stock.symbol));
+            data.historicalStockList.forEach(stock => {
+                const { symbol, historical } = stock;
+                if (!Array.isArray(historical) || !historical.length) {
+                    console.warn(`No historical data available for ticker: ${symbol}`);
+                    return;
                 }
-            } else {
-                renderStockBlock(symbol, stockName, historical, null, stocksContainer);
-            }
-        });
+                const stockName = stockDescriptions[symbol] || symbol;
+                historical.reverse();
 
-        // If some tickers were skipped, retry them in chunks
-        const missingTickers = uniqueTickers.filter(ticker => !returnedSymbols.has(ticker));
-        if (missingTickers.length) {
-            console.warn('Retrying missing tickers in chunks:', missingTickers);
-            const chunks = chunkArray(missingTickers, 10); // Adjust chunk size as needed
+                // Update portfolio lastPrice if present
+                if (portfolio[symbol]) {
+                    portfolio[symbol].lastPrice = historical[historical.length - 1].close;
+                }
 
-            for (const chunk of chunks) {
-                await getStockDataBatch(chunk); // Recursive call for chunked retry
+                if (weeksToFetch >= 16) {
+                    const blockSize = 90;
+                    for (let i = 0; i < historical.length; i += blockSize) {
+                        const block = historical.slice(i, i + blockSize);
+                        const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
+                        renderStockBlock(symbol, stockName, block, blockLabel, stocksContainer);
+                    }
+                } else {
+                    renderStockBlock(symbol, stockName, historical, null, stocksContainer);
+                }
+            });
+
+            // After batch fetch and portfolio lastPrice updates
+            savePortfolioToStorage();
+
+            // Retry missing tickers
+            const missingTickers = uniqueTickers.filter(ticker => !returnedSymbols.has(ticker));
+            if (missingTickers.length) {
+                console.warn('Retrying missing tickers in chunks:', missingTickers);
+                const chunks = chunkArray(missingTickers, 10);
+                for (const chunk of chunks) {
+                    await getStockDataBatch(chunk);
+                }
             }
+            return;
         }
+
+        // Unexpected format
+        console.warn('Unexpected batch format:', data);
 
     } catch (error) {
         console.error('Error fetching batch stock data:', error);
@@ -398,7 +426,7 @@ function renderStockBlock(ticker, name, dataBlock, blockLabel, container) {
 
     let previousPrice = null;
     dataBlock.forEach((day, index) => {
-        const change = previousPrice !== null ? (day.close - previousPrice).toFixed(2) : '�';
+        const change = previousPrice !== null ? (day.close - previousPrice).toFixed(2) : '—';
         let rowClass = '';
 
         if (day.date === highDate) {
@@ -550,10 +578,10 @@ function showPortfolioInStocksContainer() {
         const totalValue = (info.quantity * info.lastPrice).toFixed(2);
         table += `<tr>
             <td>
-                <button title="Quick Fetch" style="padding:4px 10px; font-size:1rem; border-radius:6px; border:none; background:#3498db; color:#fff; cursor:pointer;"
-                    onclick="getStockData('${ticker}')">
-                    &#x1F50D;
-                </button>
+                <button title="Quick Fetch" class="quick-fetch-btn"
+    onclick="getStockData('${ticker}')">
+    &#x1F50D;
+</button>
             </td>
             <td>${ticker}</td>
             <td>${info.name}</td>

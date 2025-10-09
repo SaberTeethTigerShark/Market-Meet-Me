@@ -164,6 +164,35 @@ body {
     margin-right: 8px;
 }
 
+
+/* ========================
+    Quick Fetch Button
+    ======================== */
+.quick-fetch-btn {
+    background: #43e97b;
+    color: #fff;
+    border: 1px solid #43e97b;
+    padding: 4px 10px;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+    .quick-fetch-btn:hover,
+    .quick-fetch-btn:focus {
+        background: #7fffd4;
+        color: #222;
+        border-color: #7fffd4;
+    }
+
+body.dark-mode .quick-fetch-btn {
+    background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    color: #222;
+    border: 1px solid #43e97b;
+}
+
+
 /* =========================
    Hamburger Menu
 ========================= */
@@ -275,19 +304,16 @@ body {
     background: #fff;
 }
 
-/* Remove number input spinners for Chrome, Safari, Edge */
 .trade-controls input[type="number"]::-webkit-outer-spin-button,
 .trade-controls input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-/* Remove number input spinners for Firefox */
 .trade-controls input[type="number"] {
     -moz-appearance: textfield;
 }
 
-/* Remove number input spinners for dark mode as well */
 body.dark-mode .trade-controls input[type="number"]::-webkit-outer-spin-button,
 body.dark-mode .trade-controls input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -545,3 +571,16 @@ body.dark-mode .portfolio-table input[type="number"]::-webkit-inner-spin-button 
 body.dark-mode .portfolio-table input[type="number"] {
     -moz-appearance: textfield;
 }
+
+    body.dark-mode .quick-fetch-btn {
+        background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+        color: #222;
+        border: 1px solid #43e97b;
+    }
+
+        body.dark-mode .quick-fetch-btn:hover,
+        body.dark-mode .quick-fetch-btn:focus {
+            background: linear-gradient(90deg, #7fffd4 0%, #43e97b 100%);
+            color: #222;
+            border-color: #7fffd4;
+        }
