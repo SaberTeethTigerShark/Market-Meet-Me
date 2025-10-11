@@ -73,6 +73,30 @@ Functionality:
 
 ---
 
+### 🔹 Clear Loaded Stocks Button
+- **Purpose**: Instantly clear all loaded stock data from the display.
+- **How to use**: Click the **Clear Loaded Stocks** button (located next to the Show/Hide Portfolio button) to remove all currently displayed stocks and reset the category dropdown.
+
+---
+
+### 🔹 Toast Notifications
+- **Purpose**: Show feedback messages for actions like buying or selling stocks.
+- **How to use**: Toasts appear automatically when you perform actions such as trades.
+
+---
+
+### 🔹 Bankroll Display
+- **Purpose**: Shows your available cash for trading.
+- **How to use**: The bankroll updates automatically as you buy or sell stocks. Negative, zero, or positive balances are visually highlighted.
+
+---
+
+### 🔹 Trade History View
+- **Purpose**: View your recent trades and performance summary.
+- **How to use**: Click **Show Trade History** to see your last 5 trades and overall performance. Click the ellipsis (…) to expand and view all trades.
+
+---
+
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 In-Program Function Documentation
@@ -181,6 +205,11 @@ In-Program Function Documentation
 
 ---
 
+//  sellByDollarAmount(ticker, name, lastPrice, inputId)
+//  Sells shares based on a user-entered dollar amount.
+
+---
+
 //  showPortfolioInStocksContainer()
 //  Displays the user's portfolio in the stocks container, including trade controls and quick fetch buttons.
 
@@ -196,7 +225,54 @@ In-Program Function Documentation
 
 ---
 
-//  Page Initialization
-//  On page load, enables dark mode, loads the portfolio, parses and categorizes stocks, and populates ticker suggestions and category dropdown.
+//  calculatePerformance()
+//  Calculates realized and unrealized profit/loss for the portfolio and trade history.
+
+---
+
+//  loadTradeHistoryFromStorage()
+//  Loads the user's trade history from localStorage.
+
+---
+
+//  saveTradeHistoryToStorage()
+//  Saves the user's trade history to localStorage.
+
+---
+
+//  renderTradeHistoryView()
+//  Renders the trade history and performance summary in the trade history container.
+
+---
+
+//  showToast(message, duration)
+//  Displays a temporary toast notification with the given message.
+
+---
+
+//  loadBankrollFromStorage()
+//  Loads the user's bankroll (cash balance) from localStorage.
+
+---
+
+//  saveBankrollToStorage()
+//  Saves the user's bankroll to localStorage.
+
+---
+
+//  updateBankrollDisplay()
+//  Updates the bankroll display element with the current cash balance and highlights status.
+
+---
+
+//  clearLoadedStocks()
+//  Clears all loaded stock data from the display, resets the portfolio view state, and (if triggered by the Clear Loaded Stocks button) resets the category dropdown selection.
+
+---
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+Page Initialization
+- On page load, enables dark mode, loads the portfolio and trade history, parses and categorizes stocks, populates ticker suggestions and category dropdown, and sets up all controls and event listeners.
 
 ---
