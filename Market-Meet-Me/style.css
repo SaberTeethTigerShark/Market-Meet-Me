@@ -31,6 +31,13 @@ body {
     gap: 10px;
 }
 
+#fetchedStocksContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 24px;
+}
+
 /* =========================
    Stock Card
 ========================= */
@@ -71,6 +78,12 @@ body {
     border-bottom: 1px solid #ddd;
     word-wrap: break-word;
     font-size: 12px;
+}
+
+#fetchedStocksContainer .stock {
+    min-width: 320px;
+    max-width: 340px;
+    flex: 1 1 320px;
 }
 
 /* =========================
@@ -192,6 +205,45 @@ body.dark-mode .quick-fetch-btn {
     border: 1px solid #43e97b;
 }
 
+
+/* =========================
+   Fetch All Portfolio Button
+========================= */
+#fetchAllPortfolioBtn {
+    background: #43e97b;
+    color: #fff;
+    border: 1px solid #43e97b;
+    padding: 8px 20px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(67,233,123,0.12);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    outline: none;
+}
+
+#fetchAllPortfolioBtn:hover,
+#fetchAllPortfolioBtn:focus {
+    background: #7fffd4;
+    color: #222;
+    border-color: #7fffd4;
+}
+
+/* Dark mode styles */
+body.dark-mode #fetchAllPortfolioBtn {
+    background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    color: #222;
+    border: 1px solid #43e97b;
+    box-shadow: 0 2px 8px rgba(67,233,123,0.18);
+}
+
+body.dark-mode #fetchAllPortfolioBtn:hover,
+body.dark-mode #fetchAllPortfolioBtn:focus {
+    background: linear-gradient(90deg, #7fffd4 0%, #43e97b 100%);
+    color: #222;
+    border-color: #7fffd4;
+}
 
 /* =========================
    Hamburger Menu
@@ -572,15 +624,189 @@ body.dark-mode .portfolio-table input[type="number"] {
     -moz-appearance: textfield;
 }
 
-    body.dark-mode .quick-fetch-btn {
-        background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
-        color: #222;
-        border: 1px solid #43e97b;
-    }
+/* =========================
+   Performance Summary - Polished Light Mode
+========================= */
+.performance-summary.polished-summary {
+    background: #f8fafc;
+    color: #222;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(52,152,219,0.08);
+    border: 1px solid #e0e0e0;
+    transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
 
-        body.dark-mode .quick-fetch-btn:hover,
-        body.dark-mode .quick-fetch-btn:focus {
-            background: linear-gradient(90deg, #7fffd4 0%, #43e97b 100%);
-            color: #222;
-            border-color: #7fffd4;
-        }
+.performance-summary .perf-row {
+    display: flex;
+    gap: 32px;
+    font-size: 1.1em;
+    margin-top: 8px;
+}
+
+.performance-summary .perf-realized {
+    color: #2ecc71;
+    font-weight: bold;
+}
+
+.performance-summary .perf-unrealized {
+    color: #e67e22;
+    font-weight: bold;
+}
+
+.performance-summary .perf-total {
+    color: #3498db;
+    font-weight: bold;
+}
+
+/* =========================
+   Trade History Container
+========================= */
+#tradeHistoryContainer {
+    margin: 32px auto;
+    max-width: 900px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+    padding: 24px 28px;
+    border: 1px solid #e0e0e0;
+    transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
+
+/* Polished look for dark mode */
+body.dark-mode #tradeHistoryContainer {
+    background: #181818;
+    color: #eee;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(67,233,123,0.08), 0 1px 4px rgba(0,0,0,0.18);
+    border: 1px solid #222;
+    border-color: #43e97b;
+}
+
+/* =========================
+   Performance Summary Container
+========================= */
+#performanceSummaryContainer {
+    margin: 32px auto;
+    max-width: 900px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+    padding: 24px 28px;
+    border: 1px solid #e0e0e0;
+    transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
+
+/* Polished look for dark mode */
+body.dark-mode #performanceSummaryContainer {
+    background: #181818;
+    color: #eee;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(67,233,123,0.08), 0 1px 4px rgba(0,0,0,0.18);
+    border: 1px solid #222;
+    border-color: #43e97b;
+}
+
+/* =========================
+   Trade History Table - Polished Dark Mode (Restored to Previous Style)
+========================= */
+body.dark-mode .trade-history-table.polished-table {
+    background: #181818;
+    color: #eee;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+
+body.dark-mode .trade-history-table.polished-table th {
+    background: #222;
+    color: #eee;
+    border-bottom: 1px solid #444;
+}
+
+body.dark-mode .trade-history-table.polished-table td {
+    background: #181818;
+    color: #eee;
+    border-bottom: 1px solid #222;
+}
+
+body.dark-mode .trade-history-table.polished-table tr:last-child td {
+    border-bottom: none;
+}
+
+body.dark-mode .action-buy {
+    color: #43e97b !important;
+    font-weight: bold;
+}
+
+body.dark-mode .action-sell {
+    color: #e74c3c !important;
+    font-weight: bold;
+}
+
+/* =========================
+   Performance Summary - Polished Dark Mode
+========================= */
+body.dark-mode .performance-summary.polished-summary {
+    background: #222;
+    color: #eee;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(67,233,123,0.10);
+    border: 1px solid #43e97b;
+    transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
+
+body.dark-mode .performance-summary .perf-row {
+    display: flex;
+    gap: 32px;
+    font-size: 1.1em;
+    margin-top: 8px;
+}
+
+body.dark-mode .performance-summary .perf-realized {
+    color: #43e97b;
+    font-weight: bold;
+}
+
+body.dark-mode .performance-summary .perf-unrealized {
+    color: #e67e22;
+    font-weight: bold;
+}
+
+body.dark-mode .performance-summary .perf-total {
+    color: #38f9d7;
+    font-weight: bold;
+}
+
+.trade-history-table.polished-table {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    box-sizing: border-box;
+    display: table;
+}
+.trade-history-table.polished-table th,
+.trade-history-table.polished-table td {
+    text-align: center;
+}
+.bankroll-polished {
+    display: inline-block;
+    margin-left: 50px;
+    padding: 8px 20px;
+    background: linear-gradient(90deg, #27ae60 80%, #145a32 100%);
+    color: #fff;
+    font-weight: bold;
+    font-size: 1.15rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(39,174,96,0.15);
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+    border: 2px solid #229954;
+}
+
+#tradeHistoryEllipsis:hover {
+    background: #eee;
+}

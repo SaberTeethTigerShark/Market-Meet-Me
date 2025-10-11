@@ -197,6 +197,7 @@ function updateWeeksToFetch() {
 //  Attempts to fetch stock data using a manually entered ticker symbol,
 //  falling back to name-based lookup if no direct match is found.
 //
+// --- Update fetchManualStock ---
 function fetchManualStock() {
     const input = document.getElementById('manualTicker').value.trim();
     if (!input) return;
@@ -207,12 +208,15 @@ function fetchManualStock() {
     const ticker = input.toUpperCase();
     if (stockDescriptions.hasOwnProperty(ticker)) {
         if (clearBoard) {
-            document.getElementById('stocksContainer').innerHTML = '';
+            clearLoadedStocks();
         }
         getStockData(ticker);
     } else {
         // Fallback to lookup by name
-        lookupTickerByName(input, clearBoard);
+        if (clearBoard) {
+            clearLoadedStocks();
+        }
+        lookupTickerByName(input, false); // clearBoard already handled
     }
 }
 
@@ -277,18 +281,20 @@ function chunkArray(array, size) {
 //  and recursively retries any missing tickers in manageable chunks.
 //
 
-async function getStockDataBatch(tickerArray) {
+async function getStockDataBatch(tickerArray, renderContainer) {
+    // If no container is provided, default to stocksContainer and clear it
+    if (!renderContainer) {
+        clearLoadedStocks();
+        renderContainer = document.getElementById('stocksContainer');
+    }
+
     const uniqueTickers = [...new Set(tickerArray)];
     const tickerString = uniqueTickers.join(',');
     const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${tickerString}?apikey=${API_KEY}&timeseries=${weeksToFetch * 7}`;
 
     try {
-        console.log('Fetching batch stock data for:', tickerString);
         const response = await fetch(url);
         const data = await response.json();
-        console.log('Batch stock data:', data);
-
-        const stocksContainer = document.getElementById('stocksContainer');
 
         // Handle single-ticker response
         if (data.historical && data.symbol) {
@@ -301,13 +307,11 @@ async function getStockDataBatch(tickerArray) {
                     for (let i = 0; i < historical.length; i += blockSize) {
                         const block = historical.slice(i, i + blockSize);
                         const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
-                        renderStockBlock(data.symbol, stockName, block, blockLabel, stocksContainer);
+                        renderStockBlock(data.symbol, stockName, block, blockLabel, renderContainer);
                     }
                 } else {
-                    renderStockBlock(data.symbol, stockName, historical, null, stocksContainer);
+                    renderStockBlock(data.symbol, stockName, historical, null, renderContainer);
                 }
-            } else {
-                console.warn(`No historical data available for ticker: ${data.symbol}`);
             }
             return;
         }
@@ -317,14 +321,10 @@ async function getStockDataBatch(tickerArray) {
             const returnedSymbols = new Set(data.historicalStockList.map(stock => stock.symbol));
             data.historicalStockList.forEach(stock => {
                 const { symbol, historical } = stock;
-                if (!Array.isArray(historical) || !historical.length) {
-                    console.warn(`No historical data available for ticker: ${symbol}`);
-                    return;
-                }
+                if (!Array.isArray(historical) || !historical.length) return;
                 const stockName = stockDescriptions[symbol] || symbol;
                 historical.reverse();
 
-                // Update portfolio lastPrice if present
                 if (portfolio[symbol]) {
                     portfolio[symbol].lastPrice = historical[historical.length - 1].close;
                 }
@@ -334,30 +334,25 @@ async function getStockDataBatch(tickerArray) {
                     for (let i = 0; i < historical.length; i += blockSize) {
                         const block = historical.slice(i, i + blockSize);
                         const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
-                        renderStockBlock(symbol, stockName, block, blockLabel, stocksContainer);
+                        renderStockBlock(symbol, stockName, block, blockLabel, renderContainer);
                     }
                 } else {
-                    renderStockBlock(symbol, stockName, historical, null, stocksContainer);
+                    renderStockBlock(symbol, stockName, historical, null, renderContainer);
                 }
             });
-
-            // After batch fetch and portfolio lastPrice updates
-            savePortfolioToStorage();
 
             // Retry missing tickers
             const missingTickers = uniqueTickers.filter(ticker => !returnedSymbols.has(ticker));
             if (missingTickers.length) {
-                console.warn('Retrying missing tickers in chunks:', missingTickers);
                 const chunks = chunkArray(missingTickers, 10);
                 for (const chunk of chunks) {
-                    await getStockDataBatch(chunk);
+                    await getStockDataBatch(chunk, renderContainer);
                 }
             }
             return;
         }
 
-        // Unexpected format
-        console.warn('Unexpected batch format:', data);
+        savePortfolioToStorage();
 
     } catch (error) {
         console.error('Error fetching batch stock data:', error);
@@ -468,56 +463,87 @@ function savePortfolioToStorage() {
 
 // clearPortfolioLocalStorage();
 // Clear portfolio from localStorage and reset
-
 function clearPortfolioLocalStorage() {
     localStorage.removeItem(PORTFOLIO_KEY);
+    localStorage.removeItem(TRADE_HISTORY_KEY); // Clear trade history
     portfolio = {};
+    tradeHistory = []; // Reset trade history in memory
+
+    // Reset bankroll to $1,000,000
+    bankroll = 1000000;
+    saveBankrollToStorage();
+
     // If portfolio is shown in stocksContainer, clear it
     if (document.getElementById('stocksContainer').dataset.showingPortfolio === "true") {
         showPortfolioInStocksContainer();
     }
+    renderTradeHistoryView(); // Update trade history view if visible
     closeHamburgerDropdown();
 }
 
 // updatePortfolio(ticker, name, price, action, qty = 1);
 // Update portfolio based on buy/sell actions
-
 function updatePortfolio(ticker, name, price, action, qty = 1) {
     if (!portfolio[ticker]) {
         portfolio[ticker] = { name, quantity: 0, avgBuyPrice: 0, lastPrice: price };
     }
     let info = portfolio[ticker];
     info.lastPrice = price;
+
+    // Log trade
+    if (action === 'buy' || action === 'sell') {
+        tradeHistory.push({
+            ticker,
+            name,
+            action,
+            quantity: qty,
+            price,
+            total: qty * price,
+            date: new Date().toISOString()
+        });
+        saveTradeHistoryToStorage();
+    }
+
     if (action === 'buy') {
         info.avgBuyPrice = ((info.avgBuyPrice * info.quantity) + (price * qty)) / (info.quantity + qty);
         info.quantity += qty;
+        bankroll -= price * qty;
     } else if (action === 'sell') {
         info.quantity = Math.max(0, info.quantity - qty);
         if (info.quantity === 0) info.avgBuyPrice = 0;
+        bankroll += price * qty;
     } else if (action === 'sellAll') {
+        bankroll += info.lastPrice * info.quantity;
         info.quantity = 0;
         info.avgBuyPrice = 0;
     }
     savePortfolioToStorage();
-    // If portfolio view is active, refresh it
+    saveBankrollToStorage();
     if (document.getElementById('stocksContainer').dataset.showingPortfolio === "true") {
         showPortfolioInStocksContainer();
+    }
+
+    // Redraw trade history if visible
+    if (typeof tradeHistoryVisible !== 'undefined' && tradeHistoryVisible) {
+        renderTradeHistoryView();
     }
 }
 
 // renderTradeControls(ticker, name, lastPrice, container);
 // Render buy/sell controls for a stock
 function renderTradeControls(ticker, name, lastPrice, container) {
+    // Escape single quotes in name for safe inline JS
+    const safeName = name.replace(/'/g, "\\'");
     const controls = document.createElement('div');
     controls.className = 'trade-controls';
     controls.innerHTML = `
         <button class="sell-btn" title="Sell shares"
-    onclick="updatePortfolio('${ticker}','${name}',${lastPrice},'sell',parseFloat(document.getElementById('tradeQty_${ticker}').value)||1)">
-    Sell
-</button>
+            onclick="sellByDollarAmount('${ticker}','${safeName}',${lastPrice},'tradeQty_${ticker}')">
+            Sell
+        </button>
         <input type="number" min="1" value="" id="tradeQty_${ticker}" placeholder="$" title="Dollar amount to trade">
         <button class="buy-btn" title="Buy shares"
-            onclick="buyByDollarAmount('${ticker}','${name}',${lastPrice},'tradeQty_${ticker}')">
+            onclick="buyByDollarAmount('${ticker}','${safeName}',${lastPrice},'tradeQty_${ticker}')">
             Buy
         </button>
     `;
@@ -538,10 +564,26 @@ function buyByDollarAmount(ticker, name, lastPrice, inputId) {
         return;
     }
     updatePortfolio(ticker, name, lastPrice, 'buy', shares);
+    showToast(`Bought $${dollarAmount.toFixed(2)} of ${ticker} (${shares.toFixed(4)} shares)`);
 }
 
-// showPortfolioInStocksContainer();
-// Display the portfolio in the stocks container
+// sellByDollarAmount(ticker, name, lastPrice, inputId);
+// Sell shares based on dollar amount input
+function sellByDollarAmount(ticker, name, lastPrice, inputId) {
+    const dollarAmount = parseFloat(document.getElementById(inputId).value);
+    if (isNaN(dollarAmount) || dollarAmount <= 0) {
+        alert("Enter a valid dollar amount.");
+        return;
+    }
+    const shares = dollarAmount / lastPrice;
+    if (shares <= 0) {
+        alert("Dollar amount too low to sell any shares.");
+        return;
+    }
+    updatePortfolio(ticker, name, lastPrice, 'sell', shares);
+    showToast(`Sold $${dollarAmount.toFixed(2)} of ${ticker} (${shares.toFixed(4)} shares)`);
+}
+
 
 function showPortfolioInStocksContainer() {
     const stocksContainer = document.getElementById('stocksContainer');
@@ -557,9 +599,13 @@ function showPortfolioInStocksContainer() {
         stocksContainer.innerHTML = '<div style="text-align:center;">No stocks in your portfolio.</div>';
         return;
     }
+
+    // Add Fetch All button to the left of Ticker header
     let table = `<table class="portfolio-table">
         <tr>
-            <th></th>
+            <th>
+                <button id="fetchAllPortfolioBtn" title="Fetch all portfolio stocks">&#x1F50E; Fetch All</button>
+            </th>
             <th>Ticker</th>
             <th>Name</th>
             <th>Qty</th>
@@ -569,7 +615,9 @@ function showPortfolioInStocksContainer() {
             <th>Return</th>
             <th style="min-width:220px;">Trade</th>
         </tr>`;
+
     filteredPortfolio.forEach(([ticker, info]) => {
+        const safeName = info.name.replace(/'/g, "\\'");
         const ret = ((info.lastPrice - info.avgBuyPrice) * info.quantity).toFixed(2);
         let returnClass = '';
         if (info.quantity > 0) {
@@ -579,9 +627,9 @@ function showPortfolioInStocksContainer() {
         table += `<tr>
             <td>
                 <button title="Quick Fetch" class="quick-fetch-btn"
-    onclick="getStockData('${ticker}')">
-    &#x1F50D;
-</button>
+                    onclick="getStockData('${ticker}')">
+                    &#x1F50D;
+                </button>
             </td>
             <td>${ticker}</td>
             <td>${info.name}</td>
@@ -594,15 +642,15 @@ function showPortfolioInStocksContainer() {
                 <div style="display:flex;justify-content:center;align-items:center;gap:8px;">
                     <input type="number" min="1" value="" id="portfolioQty_${ticker}" placeholder="$" title="Dollar amount to buy">
                     <button class="buy-btn" title="Buy shares"
-                        onclick="buyByDollarAmount('${ticker}','${info.name}',${info.lastPrice},'portfolioQty_${ticker}')">
+                        onclick="buyByDollarAmount('${ticker}','${safeName}',${info.lastPrice},'portfolioQty_${ticker}')">
                         Buy
                     </button>
                     <button class="sell-btn" title="Sell shares"
-                        onclick="updatePortfolio('${ticker}','${info.name}',${info.lastPrice},'sell',parseFloat(document.getElementById('portfolioQty_${ticker}').value)||1)">
+                        onclick="sellByDollarAmount('${ticker}','${safeName}',${info.lastPrice},'portfolioQty_${ticker}')">
                         Sell
                     </button>
                     <button class="sell-btn" title="Sell all shares"
-                        onclick="updatePortfolio('${ticker}','${info.name}',${info.lastPrice},'sellAll')">
+                        onclick="updatePortfolio('${ticker}','${safeName}',${info.lastPrice},'sellAll')">
                         Sell All
                     </button>
                 </div>
@@ -611,8 +659,27 @@ function showPortfolioInStocksContainer() {
     });
     table += '</table>';
     stocksContainer.innerHTML = table;
-}
 
+    // Add event listener for Fetch All button
+    const fetchAllBtn = document.getElementById('fetchAllPortfolioBtn');
+    if (fetchAllBtn) {
+        fetchAllBtn.onclick = function () {
+            const tickers = filteredPortfolio.map(([ticker, _]) => ticker);
+            if (tickers.length > 0) {
+                // Create or get the fetched stocks container below the portfolio table
+                let stocksContainer = document.getElementById('stocksContainer');
+                let fetchedDiv = document.getElementById('fetchedStocksContainer');
+                if (!fetchedDiv) {
+                    fetchedDiv = document.createElement('div');
+                    fetchedDiv.id = 'fetchedStocksContainer';
+                    stocksContainer.appendChild(fetchedDiv);
+                }
+                fetchedDiv.innerHTML = ''; // Clear previous fetched stocks
+                getStockDataBatch(tickers, fetchedDiv); // Pass the container
+            }
+        };
+    }
+}
 
 // loadSelectedStockArray();
 // Handle category selection (show portfolio if selected)
@@ -657,7 +724,7 @@ function closeHamburgerDropdown() {
 
 // togglePortfolioView();
 // Toggle portfolio view in stocks container
-function togglePortfolioView() {
+async function togglePortfolioView() {
     const btn = document.getElementById('viewPortfolioBtn');
     const stocksContainer = document.getElementById('stocksContainer');
     const isShowing = stocksContainer.dataset.showingPortfolio === "true";
@@ -667,23 +734,281 @@ function togglePortfolioView() {
         stocksContainer.dataset.showingPortfolio = "false";
         btn.textContent = "Show Portfolio";
     } else {
-        // Show portfolio and bulk fetch latest prices
-        const tickers = Object.entries(portfolio)
-            .filter(([_, info]) => info.quantity > 0)
-            .map(([ticker, _]) => ticker);
-        if (tickers.length > 0) {
-            getStockDataBatch(tickers);
-        }
+        // Show portfolio only (do NOT fetch batch data here)
         showPortfolioInStocksContainer();
         btn.textContent = "Hide Portfolio";
     }
 }
 
-//  Initializes the page on load by enabling dark mode, parsing embedded CSV data,
-//  categorizing stocks, and populating both ticker suggestions and the category dropdown.
+function calculatePerformance() {
+    let realized = 0, unrealized = 0;
+    // Calculate realized P/L from tradeHistory
+    tradeHistory.forEach(trade => {
+        if (trade.action === 'sell' || trade.action === 'sellAll') {
+            realized += (trade.price - (portfolio[trade.ticker]?.avgBuyPrice ?? 0)) * trade.quantity;
+        }
+    });
+    // Calculate unrealized P/L from current portfolio
+    Object.values(portfolio).forEach(info => {
+        if (info.quantity > 0) {
+            unrealized += (info.lastPrice - info.avgBuyPrice) * info.quantity;
+        }
+    });
+    return {
+        realized: realized.toFixed(2),
+        unrealized: unrealized.toFixed(2),
+        total: (realized + unrealized).toFixed(2)
+    };
+}
 
+const TRADE_HISTORY_KEY = 'pretendTradeHistory';
+let tradeHistory = [];
+
+// Load trade history from localStorage
+function loadTradeHistoryFromStorage() {
+    const stored = localStorage.getItem(TRADE_HISTORY_KEY);
+    tradeHistory = stored ? JSON.parse(stored) : [];
+}
+
+// Save trade history to localStorage
+function saveTradeHistoryToStorage() {
+    localStorage.setItem(TRADE_HISTORY_KEY, JSON.stringify(tradeHistory));
+}
+
+let tradeHistoryVisible = false;
+
+function renderTradeHistoryView() {
+    const container = document.getElementById('tradeHistoryContainer');
+    if (!tradeHistoryVisible) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+    container.style.display = 'block';
+
+    // Performance summary
+    const perf = calculatePerformance();
+    let html = `
+        <div class="performance-summary polished-summary">
+            <h2>Performance Summary</h2>
+            <div class="perf-row">
+                <span>Realized P/L:</span> <span class="perf-realized">$${perf.realized}</span>
+                <span>Unrealized P/L:</span> <span class="perf-unrealized">$${perf.unrealized}</span>
+                <span>Total Return:</span> <span class="perf-total">$${perf.total}</span>
+            </div>
+        </div>
+        <h2 style="margin-top:24px;">Trade History</h2>
+        <div style="max-height:220px; overflow-y:auto;">
+            <table class="trade-history-table polished-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Ticker</th>
+                        <th>Name</th>
+                        <th>Action</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tradeHistoryRows">
+    `;
+
+    // Show only last 5 trades, with ellipsis if more
+    const maxToShow = 5;
+    const totalTrades = tradeHistory.length;
+    const lastTrades = tradeHistory.slice(-maxToShow).reverse();
+
+    lastTrades.forEach(trade => {
+        html += `<tr>
+            <td>${new Date(trade.date).toLocaleString()}</td>
+            <td>${trade.ticker}</td>
+            <td>${trade.name}</td>
+            <td class="action-${trade.action}">${trade.action.toUpperCase()}</td>
+            <td>${trade.quantity.toFixed(4)}</td>
+            <td>$${trade.price.toFixed(2)}</td>
+            <td>$${trade.total.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    if (totalTrades > maxToShow) {
+        html += `<tr id="tradeHistoryEllipsis" style="cursor:pointer;text-align:center;">
+            <td colspan="7" style="font-size:1.5em;">&#8230;</td>
+        </tr>`;
+    }
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+
+    // Ellipsis click handler to show all trades
+    if (totalTrades > maxToShow) {
+        document.getElementById('tradeHistoryEllipsis').onclick = function () {
+            const rows = document.getElementById('tradeHistoryRows');
+            rows.innerHTML = '';
+            tradeHistory.slice().reverse().forEach(trade => {
+                rows.innerHTML += `<tr>
+                    <td>${new Date(trade.date).toLocaleString()}</td>
+                    <td>${trade.ticker}</td>
+                    <td>${trade.name}</td>
+                    <td class="action-${trade.action}">${trade.action.toUpperCase()}</td>
+                    <td>${trade.quantity.toFixed(4)}</td>
+                    <td>$${trade.price.toFixed(2)}</td>
+                    <td>$${trade.total.toFixed(2)}</td>
+                </tr>`;
+            });
+        };
+    }
+}
+
+function showToast(message, duration = 3000) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.style.position = 'fixed';
+        toastContainer.style.bottom = '30px';
+        toastContainer.style.left = '50%';
+        toastContainer.style.transform = 'translateX(-50%)';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+
+    // Create toast message
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.background = '#333';
+    toast.style.color = '#fff';
+    toast.style.padding = '12px 24px';
+    toast.style.marginTop = '8px';
+    toast.style.borderRadius = '6px';
+    toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+    toast.style.fontSize = '1em';
+    toast.style.opacity = '0.95';
+    toastContainer.appendChild(toast);
+
+    // Remove toast after duration
+    setTimeout(() => {
+        toast.remove();
+        // Remove container if empty
+        if (!toastContainer.hasChildNodes()) {
+            toastContainer.remove();
+        }
+    }, duration);
+}
+
+// Bankroll management
+const BANKROLL_KEY = 'pretendBankroll';
+let bankroll = 1000000;
+
+// Load bankroll from localStorage
+function loadBankrollFromStorage() {
+    const stored = localStorage.getItem(BANKROLL_KEY);
+    bankroll = stored ? parseFloat(stored) : 1000000;
+    updateBankrollDisplay();
+}
+
+// Save bankroll to localStorage
+function saveBankrollToStorage() {
+    localStorage.setItem(BANKROLL_KEY, bankroll.toString());
+    updateBankrollDisplay();
+}
+
+// Update bankroll display
+function updateBankrollDisplay() {
+    const el = document.getElementById('bankrollDisplay');
+    if (el) {
+        el.textContent = `Available Cash: $${(bankroll ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (bankroll < 0) {
+            el.style.background = '#E74C3C'; // Red for negative
+            el.style.border = '2px solid #C0392B';
+            el.style.color = '#fff';
+        } else if (bankroll === 0) {
+            el.style.background = '#BDC3C7'; // Grey for zero
+            el.style.border = '2px solid #7F8C8D';
+            el.style.color = '#333';
+        } else {
+            el.style.background = '';
+            el.style.border = '';
+            el.style.color = '';
+        }
+    }
+}
+
+function clearLoadedStocks() {
+    const stocksContainer = document.getElementById('stocksContainer');
+    stocksContainer.innerHTML = '';
+    stocksContainer.dataset.showingPortfolio = "false";
+    // Optionally reset the Show Portfolio button text if needed
+    const btn = document.getElementById('viewPortfolioBtn');
+    if (btn) btn.textContent = "Show Portfolio";
+
+    // Only reset dropdown if called from the Clear Loaded Stocks button
+    if (
+        window.event &&
+        window.event.target &&
+        window.event.target.id === 'clearLoadedStocksBtn'
+    ) {
+        const categoryDropdown = document.getElementById('stockArraySelectSelect');
+        if (categoryDropdown) {
+            categoryDropdown.value = "";
+        }
+    }
+}
+
+// Toggle button logic
 document.addEventListener('DOMContentLoaded', () => {
+
     loadPortfolioFromStorage();
+    loadTradeHistoryFromStorage();
+
+    // Trade History button event listener
+    const tradeHistoryBtn = document.getElementById('viewTradeHistoryBtn');
+    if (tradeHistoryBtn) {
+        tradeHistoryBtn.onclick = function () {
+            tradeHistoryVisible = !tradeHistoryVisible;
+            renderTradeHistoryView();
+            tradeHistoryBtn.textContent = tradeHistoryVisible ? "Hide Trade History" : "Show Trade History";
+        };
+    }
+
+    // Insert Clear Loaded Stocks button to the left of Show/Hide Portfolio
+    const portfolioBtn = document.getElementById('viewPortfolioBtn');
+    if (portfolioBtn) {
+        // Create the button
+        const clearBtn = document.createElement('button');
+        clearBtn.id = 'clearLoadedStocksBtn';
+        clearBtn.textContent = 'Clear Loaded Stocks';
+        clearBtn.style.marginRight = '8px';
+
+        // Insert before portfolioBtn
+        portfolioBtn.parentNode.insertBefore(clearBtn, portfolioBtn);
+
+        // Add event handler
+        clearBtn.onclick = clearLoadedStocks;
+
+        // Existing portfolioBtn handler
+        portfolioBtn.onclick = function () {
+            togglePortfolioView();
+        };
+    }
+
+    // Enable Enter key to fetch from manual input
+    const manualInput = document.getElementById('manualTicker');
+    if (manualInput) {
+        manualInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                fetchManualStock();
+            }
+        });
+    }
+
+    // Initial bankroll display
+    loadBankrollFromStorage();
+
+    // Initial render
+    renderTradeHistoryView();
+
     console.log('Page loaded. Please select a stock array to fetch data.');
 
     // Apply dark mode once
@@ -699,3 +1024,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const categories = parseEmbeddedCSV();
     populateCategoryDropdown(categories);
 });
+
+
+

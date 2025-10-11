@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Market-Meet-Me v.[Year].[Month].[Day]:[Attempt] -->
-    <title>Market-Meet-Me v.2025.10.09:01</title>
+    <!-- Market-Meet-Me v.[Version].[Year].[Month].[Day]:[Attempt] -->
+    <title>Market-Meet-Me v.1.2025.10.09:02</title>
     <link rel="icon" href="icons/icon.png" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
     <script src="main.js"></script>
@@ -526,6 +526,8 @@
         <button onclick="clearPortfolioLocalStorage()">Clear Portfolio</button>
     </div>
 
+    <div id="bankrollDisplay" class="bankroll-polished"></div>
+
     <div id="topControls">
         <div id="manualStockInput">
             <label for="manualTicker">Fetch Single Stock: </label>
@@ -551,7 +553,10 @@
             </select>
         </div>
 
-        <button id="viewPortfolioBtn" onclick="togglePortfolioView()" style="margin-left:10px;">Show Portfolio</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <button id="viewPortfolioBtn">Show Portfolio</button>
+            <button id="viewTradeHistoryBtn">Show Trade History</button>
+        </div>
 
         <button id="darkModeToggle" onclick="toggleDarkMode()">Toggle Dark Mode</button>
     </div>
@@ -563,6 +568,8 @@
             <!-- Options will be added dynamically -->
         </select>
     </div>
+
+    <div id="tradeHistoryContainer"></div>
     <div id="stocksContainer"></div>
 </body>
 </html>
