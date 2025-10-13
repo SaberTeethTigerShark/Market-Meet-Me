@@ -1,22 +1,21 @@
-﻿const stockArrays = {};
+// --- GLOBALS ---
+const stockArrays = {};
 const stockDescriptions = {};
-
-// Set your API key here
 const API_KEY = 'API KEY HERE';
+const PORTFOLIO_KEY = 'pretendPortfolio';
+const TRADE_HISTORY_KEY = 'pretendTradeHistory';
+const BANKROLL_KEY = 'pretendBankroll';
 
-//  function toggleDarkMode()
-//  Toggles the website's theme between light and dark modes by adding or removing the dark-mode CSS class from the <body> element.
+let portfolio = {};
+let tradeHistory = [];
+let tradeHistoryVisible = false;
+let bankroll = 1000000;
+let weeksToFetch = 2;
 
+// --- UTILITY FUNCTIONS ---
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
 }
-
-
-//
-//  parseEmbeddedCSV
-//  Parses CSV data embedded in the DOM element with ID 'embeddedCSV',
-//  categorizes stock symbols by sector and sub-industry, and returns a sorted list of all unique categories found.
-//
 
 function parseEmbeddedCSV() {
     const csvText = document.getElementById('embeddedCSV').textContent.trim();
@@ -49,11 +48,6 @@ function parseEmbeddedCSV() {
     return [...categories].sort();
 }
 
-//
-// categorizeStocksFromCSV()
-// Parses embedded CSV data to map stock symbols to their names, categorize them by sector and sub-industry,
-// and return a sorted list of all unique categories.
-//
 function categorizeStocksFromCSV() {
     const csvText = document.getElementById('embeddedCSV').textContent.trim();
     const lines = csvText.split('\n');
@@ -89,10 +83,6 @@ function categorizeStocksFromCSV() {
     return [...categories].sort();
 }
 
-//
-//  populateCategoryDropdown(categoryList)
-//  Populates a dropdown menu with category options using the provided list, resetting its contents before insertion.
-//
 function populateCategoryDropdown(categoryList) {
     const select = document.getElementById('stockArraySelectSelect');
     select.innerHTML = '<option value="">--Select--</option>';
@@ -104,11 +94,6 @@ function populateCategoryDropdown(categoryList) {
     });
 }
 
-//
-//  populateTickerSuggestions()
-//  Generates autocomplete suggestions for stock tickers by parsing embedded CSV data and populating
-//  a datalist element with ticker-name pairs.
-//
 function populateTickerSuggestions() {
     const datalist = document.getElementById('tickerSuggestions');
     datalist.innerHTML = '';
@@ -133,140 +118,6 @@ function populateTickerSuggestions() {
     });
 }
 
-//
-//  loadSelectedStockArray()
-//  Loads the selected stock category from a dropdown, deduplicates its tickers, and fetches their data in a single batch.
-//
-function loadSelectedStockArray() {
-    const select = document.getElementById('stockArraySelectSelect');
-    const selectedArrayName = select.value;
-
-    if (!selectedArrayName) return;
-
-    const selectedArray = stockArrays[selectedArrayName];
-    if (!selectedArray || !selectedArray.length) return;
-
-    const stocksContainer = document.getElementById('stocksContainer');
-    stocksContainer.innerHTML = '';
-
-    // Deduplicate tickers before fetching
-    const uniqueTickers = [...new Set(selectedArray)];
-
-    // Fetch all tickers in one batch
-    getStockDataBatch(uniqueTickers);
-}
-
-//
-//  lookupTickerByName(name, clearBoard)
-//  Searches for a NASDAQ ticker symbol by company name using an external API,
-//  optionally clears the display, and fetches stock data if found.
-//
-async function lookupTickerByName(name, clearBoard) {
-    const url = `https://financialmodelingprep.com/api/v3/search?query=${encodeURIComponent(name)}&limit=1&exchange=NASDAQ&apikey=${API_KEY}`;
-    const response = await fetch(url);
-    const results = await response.json();
-
-    if (results.length === 0) {
-        alert(`No ticker found for "${name}".`);
-        return;
-    }
-
-    const ticker = results[0].symbol;
-    if (clearBoard) {
-        document.getElementById('stocksContainer').innerHTML = '';
-    }
-    getStockData(ticker);
-}
-
-//
-//  updateWeeksToFetch()
-//  Updates the global `weeksToFetch` value based on user input and reloads the currently selected stock array accordingly.
-//
-let weeksToFetch = 2; // Default to 2 weeks
-function updateWeeksToFetch() {
-    const input = document.getElementById('weeksInput');
-    weeksToFetch = parseInt(input.value);
-    console.log(`Weeks to fetch updated to: ${weeksToFetch}`);
-
-    // Refetch the selected stock array
-    loadSelectedStockArray();
-}
-
-//
-//  fetchManualStock()
-//  Attempts to fetch stock data using a manually entered ticker symbol,
-//  falling back to name-based lookup if no direct match is found.
-//
-// --- Update fetchManualStock ---
-function fetchManualStock() {
-    const input = document.getElementById('manualTicker').value.trim();
-    if (!input) return;
-
-    const clearBoard = document.getElementById('clearBoardToggle').checked;
-
-    // Try direct ticker match first
-    const ticker = input.toUpperCase();
-    if (stockDescriptions.hasOwnProperty(ticker)) {
-        if (clearBoard) {
-            clearLoadedStocks();
-        }
-        getStockData(ticker);
-    } else {
-        // Fallback to lookup by name
-        if (clearBoard) {
-            clearLoadedStocks();
-        }
-        lookupTickerByName(input, false); // clearBoard already handled
-    }
-}
-
-//
-//  getStockData(stockTicker)
-//  Fetches historical stock data for a given ticker, reverses it chronologically,
-//  and renders it in blocks based on the selected time range.
-//
-async function getStockData(stockTicker) {
-    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${stockTicker}?apikey=${API_KEY}&timeseries=${weeksToFetch * 7}`;
-    try {
-        console.log('Fetching stock data for ticker:', stockTicker);
-        const response = await fetch(url);
-        const data = await response.json();
-        console.log('Stock data for ticker:', stockTicker, data);
-
-        const stockData = data.historical;
-        if (!stockData || !stockData.length) {
-            console.warn(`No historical data available for ticker: ${stockTicker}`);
-            return;
-        }
-
-        const stockName = stockDescriptions[stockTicker] || stockTicker;
-        const stocksContainer = document.getElementById('stocksContainer');
-
-        // Reverse to show oldest first
-        stockData.reverse();
-
-        // If weeksToFetch >= 16, split into 90-day blocks
-        if (weeksToFetch >= 16) {
-            const blockSize = 90;
-            for (let i = 0; i < stockData.length; i += blockSize) {
-                const block = stockData.slice(i, i + blockSize);
-                const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
-                renderStockBlock(stockTicker, stockName, block, blockLabel, stocksContainer);
-            }
-        } else {
-            renderStockBlock(stockTicker, stockName, stockData, null, stocksContainer);
-        }
-
-    } catch (error) {
-        console.error(`Error fetching stock data for ticker: ${stockTicker}`, error);
-    }
-}
-
-//
-//  chunkArray(array, size)
-//  Splits an array into smaller chunks of a specified size and returns them as a new array of arrays.
-//
-
 function chunkArray(array, size) {
     const chunks = [];
     for (let i = 0; i < array.length; i += size) {
@@ -275,214 +126,39 @@ function chunkArray(array, size) {
     return chunks;
 }
 
-//
-//  getStockDataBatch(tickerArray)
-//  Fetches historical stock data for multiple tickers in a single API call, renders each dataset,
-//  and recursively retries any missing tickers in manageable chunks.
-//
-
-async function getStockDataBatch(tickerArray, renderContainer) {
-    // If no container is provided, default to stocksContainer and clear it
-    if (!renderContainer) {
-        clearLoadedStocks();
-        renderContainer = document.getElementById('stocksContainer');
-    }
-
-    const uniqueTickers = [...new Set(tickerArray)];
-    const tickerString = uniqueTickers.join(',');
-    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${tickerString}?apikey=${API_KEY}&timeseries=${weeksToFetch * 7}`;
-
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        // Handle single-ticker response
-        if (data.historical && data.symbol) {
-            const stockName = stockDescriptions[data.symbol] || data.symbol;
-            const historical = data.historical;
-            if (Array.isArray(historical) && historical.length) {
-                historical.reverse();
-                if (weeksToFetch >= 16) {
-                    const blockSize = 90;
-                    for (let i = 0; i < historical.length; i += blockSize) {
-                        const block = historical.slice(i, i + blockSize);
-                        const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
-                        renderStockBlock(data.symbol, stockName, block, blockLabel, renderContainer);
-                    }
-                } else {
-                    renderStockBlock(data.symbol, stockName, historical, null, renderContainer);
-                }
-            }
-            return;
-        }
-
-        // Handle batch response
-        if (Array.isArray(data.historicalStockList)) {
-            const returnedSymbols = new Set(data.historicalStockList.map(stock => stock.symbol));
-            data.historicalStockList.forEach(stock => {
-                const { symbol, historical } = stock;
-                if (!Array.isArray(historical) || !historical.length) return;
-                const stockName = stockDescriptions[symbol] || symbol;
-                historical.reverse();
-
-                if (portfolio[symbol]) {
-                    portfolio[symbol].lastPrice = historical[historical.length - 1].close;
-                }
-
-                if (weeksToFetch >= 16) {
-                    const blockSize = 90;
-                    for (let i = 0; i < historical.length; i += blockSize) {
-                        const block = historical.slice(i, i + blockSize);
-                        const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
-                        renderStockBlock(symbol, stockName, block, blockLabel, renderContainer);
-                    }
-                } else {
-                    renderStockBlock(symbol, stockName, historical, null, renderContainer);
-                }
-            });
-
-            // Retry missing tickers
-            const missingTickers = uniqueTickers.filter(ticker => !returnedSymbols.has(ticker));
-            if (missingTickers.length) {
-                const chunks = chunkArray(missingTickers, 10);
-                for (const chunk of chunks) {
-                    await getStockDataBatch(chunk, renderContainer);
-                }
-            }
-            return;
-        }
-
-        savePortfolioToStorage();
-
-    } catch (error) {
-        console.error('Error fetching batch stock data:', error);
-    }
-}
-
-//
-//  renderStockBlock(ticker, name, dataBlock, blockLabel, container)
-//  Renders a visual block of stock data with dynamic styling for price changes,
-//  highlighting the highest and lowest closing days.
-//
-
-function renderStockBlock(ticker, name, dataBlock, blockLabel, container) {
-    const stockDiv = document.createElement('div');
-    stockDiv.classList.add('stock');
-    if (blockLabel) stockDiv.classList.add('quarterblock');
-
-    stockDiv.innerHTML = `
-        <h2>${ticker}${blockLabel ? ` - ${blockLabel}` : ''}</h2>
-        <div class="description">${name}</div>
-        <table>
-            <tr><th>Date</th><th>Price</th><th>Change</th></tr>
-        </table>
-    `;
-    container.appendChild(stockDiv);
-
-    const stockTable = stockDiv.querySelector('table');
-
-    // Identify highest and lowest prices in this block
-    let highest = -Infinity, lowest = Infinity;
-    let highDate = null, lowDate = null;
-    dataBlock.forEach(day => {
-        if (day.close > highest) {
-            highest = day.close;
-            highDate = day.date;
-        }
-        if (day.close < lowest) {
-            lowest = day.close;
-            lowDate = day.date;
-        }
-    });
-
-    const style = document.createElement('style');
-    style.innerHTML = `
-                            .positive {
-                                background-color: #2ECC71;
-                                color: white;
-                            }
-                            .negative {
-                                background-color: #E74C3C;
-                                color: white;
-                            }
-                            .neutral {
-                                background-color: #BDC3C7;
-                                color: black;
-                            }
-                            .topweeks {
-                                border: 3px solid #F1C40F;
-                            }
-                            .lowestprice {
-                                background-color: #8E44AD;
-                                color: white;
-                            }
-                        `;
-    document.head.appendChild(style);
-
-    let previousPrice = null;
-    dataBlock.forEach((day, index) => {
-        const change = previousPrice !== null ? (day.close - previousPrice).toFixed(2) : '—';
-        let rowClass = '';
-
-        if (day.date === highDate) {
-            rowClass = 'topweeks';
-        } else if (day.date === lowDate) {
-            rowClass = 'lowestprice';
-        } else if (previousPrice !== null) {
-            rowClass = day.close > previousPrice ? 'positive' : 'negative';
-        } else {
-            rowClass = 'neutral';
-        }
-
-        const row = document.createElement('tr');
-        row.className = rowClass;
-        row.innerHTML = `<td>${day.date}</td><td>${day.close}</td><td>${change}</td>`;
-        stockTable.appendChild(row);
-        previousPrice = day.close;
-    });
-
-    renderTradeControls(ticker, name, dataBlock[dataBlock.length - 1].close, stockDiv);
-}
-
-// Replace your portfolio object and functions with this version
-const PORTFOLIO_KEY = 'pretendPortfolio';
-let portfolio = {};
-
-// loadPortfolioFromStorage();
-// Load portfolio from localStorage
+// --- PORTFOLIO & TRADE HISTORY ---
 function loadPortfolioFromStorage() {
     const stored = localStorage.getItem(PORTFOLIO_KEY);
     portfolio = stored ? JSON.parse(stored) : {};
 }
 
-// savePortfolioToStorage();
-// Save portfolio to localStorage
 function savePortfolioToStorage() {
     localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolio));
 }
 
-// clearPortfolioLocalStorage();
-// Clear portfolio from localStorage and reset
+function loadTradeHistoryFromStorage() {
+    const stored = localStorage.getItem(TRADE_HISTORY_KEY);
+    tradeHistory = stored ? JSON.parse(stored) : [];
+}
+
+function saveTradeHistoryToStorage() {
+    localStorage.setItem(TRADE_HISTORY_KEY, JSON.stringify(tradeHistory));
+}
+
 function clearPortfolioLocalStorage() {
     localStorage.removeItem(PORTFOLIO_KEY);
-    localStorage.removeItem(TRADE_HISTORY_KEY); // Clear trade history
+    localStorage.removeItem(TRADE_HISTORY_KEY);
     portfolio = {};
-    tradeHistory = []; // Reset trade history in memory
-
-    // Reset bankroll to $1,000,000
+    tradeHistory = [];
     bankroll = 1000000;
     saveBankrollToStorage();
-
-    // If portfolio is shown in stocksContainer, clear it
     if (document.getElementById('stocksContainer').dataset.showingPortfolio === "true") {
         showPortfolioInStocksContainer();
     }
-    renderTradeHistoryView(); // Update trade history view if visible
+    renderTradeHistoryView();
     closeHamburgerDropdown();
 }
 
-// updatePortfolio(ticker, name, price, action, qty = 1);
-// Update portfolio based on buy/sell actions
 function updatePortfolio(ticker, name, price, action, qty = 1) {
     if (!portfolio[ticker]) {
         portfolio[ticker] = { name, quantity: 0, avgBuyPrice: 0, lastPrice: price };
@@ -490,7 +166,6 @@ function updatePortfolio(ticker, name, price, action, qty = 1) {
     let info = portfolio[ticker];
     info.lastPrice = price;
 
-    // Log trade
     if (action === 'buy' || action === 'sell') {
         tradeHistory.push({
             ticker,
@@ -522,85 +197,118 @@ function updatePortfolio(ticker, name, price, action, qty = 1) {
     if (document.getElementById('stocksContainer').dataset.showingPortfolio === "true") {
         showPortfolioInStocksContainer();
     }
-
-    // Redraw trade history if visible
-    if (typeof tradeHistoryVisible !== 'undefined' && tradeHistoryVisible) {
+    if (tradeHistoryVisible) {
         renderTradeHistoryView();
     }
 }
 
-// renderTradeControls(ticker, name, lastPrice, container);
-// Render buy/sell controls for a stock
-function renderTradeControls(ticker, name, lastPrice, container) {
-    // Escape single quotes in name for safe inline JS
-    const safeName = name.replace(/'/g, "\\'");
-    const controls = document.createElement('div');
-    controls.className = 'trade-controls';
-    controls.innerHTML = `
-        <button class="sell-btn" title="Sell shares"
-            onclick="sellByDollarAmount('${ticker}','${safeName}',${lastPrice},'tradeQty_${ticker}')">
-            Sell
-        </button>
-        <input type="number" min="1" value="" id="tradeQty_${ticker}" placeholder="$" title="Dollar amount to trade">
-        <button class="buy-btn" title="Buy shares"
-            onclick="buyByDollarAmount('${ticker}','${safeName}',${lastPrice},'tradeQty_${ticker}')">
-            Buy
-        </button>
-    `;
-    container.appendChild(controls);
+function calculatePerformance() {
+    let realized = 0, unrealized = 0;
+    tradeHistory.forEach(trade => {
+        if (trade.action === 'sell' || trade.action === 'sellAll') {
+            realized += (trade.price - (portfolio[trade.ticker]?.avgBuyPrice ?? 0)) * trade.quantity;
+        }
+    });
+    Object.values(portfolio).forEach(info => {
+        if (info.quantity > 0) {
+            unrealized += (info.lastPrice - info.avgBuyPrice) * info.quantity;
+        }
+    });
+    return {
+        realized: realized.toFixed(2),
+        unrealized: unrealized.toFixed(2),
+        total: (realized + unrealized).toFixed(2)
+    };
 }
 
-// buyByDollarAmount(ticker, name, lastPrice, inputId);
-// Buy shares based on dollar amount input
-function buyByDollarAmount(ticker, name, lastPrice, inputId) {
-    const dollarAmount = parseFloat(document.getElementById(inputId).value);
-    if (isNaN(dollarAmount) || dollarAmount <= 0) {
-        alert("Enter a valid dollar amount.");
-        return;
-    }
-    const shares = dollarAmount / lastPrice;
-    if (shares <= 0) {
-        alert("Dollar amount too low to buy any shares.");
-        return;
-    }
-    updatePortfolio(ticker, name, lastPrice, 'buy', shares);
-    showToast(`Bought $${dollarAmount.toFixed(2)} of ${ticker} (${shares.toFixed(4)} shares)`);
+// --- BANKROLL ---
+function loadBankrollFromStorage() {
+    const stored = localStorage.getItem(BANKROLL_KEY);
+    bankroll = stored ? parseFloat(stored) : 1000000;
+    updateBankrollDisplay();
 }
 
-// sellByDollarAmount(ticker, name, lastPrice, inputId);
-// Sell shares based on dollar amount input
-function sellByDollarAmount(ticker, name, lastPrice, inputId) {
-    const dollarAmount = parseFloat(document.getElementById(inputId).value);
-    if (isNaN(dollarAmount) || dollarAmount <= 0) {
-        alert("Enter a valid dollar amount.");
-        return;
-    }
-    const shares = dollarAmount / lastPrice;
-    if (shares <= 0) {
-        alert("Dollar amount too low to sell any shares.");
-        return;
-    }
-    updatePortfolio(ticker, name, lastPrice, 'sell', shares);
-    showToast(`Sold $${dollarAmount.toFixed(2)} of ${ticker} (${shares.toFixed(4)} shares)`);
+function saveBankrollToStorage() {
+    localStorage.setItem(BANKROLL_KEY, bankroll.toString());
+    updateBankrollDisplay();
 }
 
+function updateBankrollDisplay() {
+    const el = document.getElementById('bankrollDisplay');
+    if (el) {
+        el.textContent = `Available Cash: $${(bankroll ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (bankroll < 0) {
+            el.style.background = '#E74C3C';
+            el.style.border = '2px solid #C0392B';
+            el.style.color = '#fff';
+        } else if (bankroll === 0) {
+            el.style.background = '#BDC3C7';
+            el.style.border = '2px solid #7F8C8D';
+            el.style.color = '#333';
+        } else {
+            el.style.background = '';
+            el.style.border = '';
+            el.style.color = '';
+        }
+    }
+}
 
-function showPortfolioInStocksContainer() {
+// --- UI & EVENT HELPERS ---
+function showToast(message, duration = 3000) {
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.style.position = 'fixed';
+        toastContainer.style.bottom = '30px';
+        toastContainer.style.left = '50%';
+        toastContainer.style.transform = 'translateX(-50%)';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.background = '#333';
+    toast.style.color = '#fff';
+    toast.style.padding = '12px 24px';
+    toast.style.marginTop = '8px';
+    toast.style.borderRadius = '6px';
+    toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+    toast.style.fontSize = '1em';
+    toast.style.opacity = '0.95';
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+        if (!toastContainer.hasChildNodes()) {
+            toastContainer.remove();
+        }
+    }, duration);
+}
+
+function clearLoadedStocks() {
     const stocksContainer = document.getElementById('stocksContainer');
     stocksContainer.innerHTML = '';
-    stocksContainer.dataset.showingPortfolio = "true";
-
+    stocksContainer.dataset.showingPortfolio = "false";
     const btn = document.getElementById('viewPortfolioBtn');
-    if (btn) btn.textContent = "Hide Portfolio";
-
-    // Filter out stocks with zero quantity
-    const filteredPortfolio = Object.entries(portfolio).filter(([ticker, info]) => info.quantity > 0);
-    if (filteredPortfolio.length === 0) {
-        stocksContainer.innerHTML = '<div style="text-align:center;">No stocks in your portfolio.</div>';
-        return;
+    if (btn) btn.textContent = "Show Portfolio";
+    if (
+        window.event &&
+        window.event.target &&
+        window.event.target.id === 'clearLoadedStocksBtn'
+    ) {
+        const categoryDropdown = document.getElementById('stockArraySelectSelect');
+        if (categoryDropdown) {
+            categoryDropdown.value = "";
+        }
     }
+}
 
-    // Add Fetch All button to the left of Ticker header
+function closeHamburgerDropdown() {
+    document.getElementById('hamburgerDropdown').style.display = 'none';
+}
+
+// --- MAIN LOGIC ---
+function renderPortfolioTable(stocksContainer, filteredPortfolio) {
     let table = `<table class="portfolio-table">
         <tr>
             <th>
@@ -615,7 +323,6 @@ function showPortfolioInStocksContainer() {
             <th>Return</th>
             <th style="min-width:220px;">Trade</th>
         </tr>`;
-
     filteredPortfolio.forEach(([ticker, info]) => {
         const safeName = info.name.replace(/'/g, "\\'");
         const ret = ((info.lastPrice - info.avgBuyPrice) * info.quantity).toFixed(2);
@@ -635,9 +342,9 @@ function showPortfolioInStocksContainer() {
             <td>${info.name}</td>
             <td>${info.quantity.toFixed(4)}</td>
             <td>${info.avgBuyPrice.toFixed(2)}</td>
-            <td>${info.lastPrice.toFixed(2)}</td>
+            <td class="last-price-cell">${info.lastPrice.toFixed(2)}</td>
             <td>${totalValue}</td>
-            <td class="${returnClass}">${ret}</td>
+            <td class="${returnClass} return-cell">${ret}</td>
             <td>
                 <div style="display:flex;justify-content:center;align-items:center;gap:8px;">
                     <input type="number" min="1" value="" id="portfolioQty_${ticker}" placeholder="$" title="Dollar amount to buy">
@@ -659,123 +366,42 @@ function showPortfolioInStocksContainer() {
     });
     table += '</table>';
     stocksContainer.innerHTML = table;
-
-    // Add event listener for Fetch All button
-    const fetchAllBtn = document.getElementById('fetchAllPortfolioBtn');
-    if (fetchAllBtn) {
-        fetchAllBtn.onclick = function () {
-            const tickers = filteredPortfolio.map(([ticker, _]) => ticker);
-            if (tickers.length > 0) {
-                // Create or get the fetched stocks container below the portfolio table
-                let stocksContainer = document.getElementById('stocksContainer');
-                let fetchedDiv = document.getElementById('fetchedStocksContainer');
-                if (!fetchedDiv) {
-                    fetchedDiv = document.createElement('div');
-                    fetchedDiv.id = 'fetchedStocksContainer';
-                    stocksContainer.appendChild(fetchedDiv);
-                }
-                fetchedDiv.innerHTML = ''; // Clear previous fetched stocks
-                getStockDataBatch(tickers, fetchedDiv); // Pass the container
-            }
-        };
-    }
 }
 
-// loadSelectedStockArray();
-// Handle category selection (show portfolio if selected)
-function loadSelectedStockArray() {
-    const select = document.getElementById('stockArraySelectSelect');
-    const selectedArrayName = select.value;
-    if (!selectedArrayName) return;
-    if (selectedArrayName === '__portfolio__') {
-        showPortfolioInStocksContainer();
-        return;
-    }
-    const selectedArray = stockArrays[selectedArrayName];
-    if (!selectedArray || !selectedArray.length) return;
+function showPortfolioInStocksContainer() {
     const stocksContainer = document.getElementById('stocksContainer');
     stocksContainer.innerHTML = '';
-    stocksContainer.dataset.showingPortfolio = "false";
-    const uniqueTickers = [...new Set(selectedArray)];
-    getStockDataBatch(uniqueTickers);
-}
-
-// Hamburger menu logic
-document.addEventListener('DOMContentLoaded', () => {
-    // Hamburger menu open/close
-    const menuBtn = document.getElementById('hamburgerMenuBtn');
-    const dropdown = document.getElementById('hamburgerDropdown');
-    menuBtn.onclick = function () {
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-    };
-    window.addEventListener('click', function (e) {
-        if (!menuBtn.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.style.display = 'none';
-        }
-    });
-});
-
-// closeHamburgerDropdown();
-// Close hamburger dropdown
-
-function closeHamburgerDropdown() {
-    document.getElementById('hamburgerDropdown').style.display = 'none';
-}
-
-// togglePortfolioView();
-// Toggle portfolio view in stocks container
-async function togglePortfolioView() {
+    stocksContainer.dataset.showingPortfolio = "true";
     const btn = document.getElementById('viewPortfolioBtn');
-    const stocksContainer = document.getElementById('stocksContainer');
-    const isShowing = stocksContainer.dataset.showingPortfolio === "true";
-    if (isShowing) {
-        // Hide portfolio: clear container and reset flag
-        stocksContainer.innerHTML = '';
-        stocksContainer.dataset.showingPortfolio = "false";
-        btn.textContent = "Show Portfolio";
-    } else {
-        // Show portfolio only (do NOT fetch batch data here)
-        showPortfolioInStocksContainer();
-        btn.textContent = "Hide Portfolio";
+    if (btn) btn.textContent = "Hide Portfolio";
+    const filteredPortfolio = Object.entries(portfolio).filter(([_, info]) => info.quantity > 0);
+    if (filteredPortfolio.length === 0) {
+        stocksContainer.innerHTML = '<div style="text-align:center;">No stocks in your portfolio.</div>';
+        return;
     }
-}
-
-function calculatePerformance() {
-    let realized = 0, unrealized = 0;
-    // Calculate realized P/L from tradeHistory
-    tradeHistory.forEach(trade => {
-        if (trade.action === 'sell' || trade.action === 'sellAll') {
-            realized += (trade.price - (portfolio[trade.ticker]?.avgBuyPrice ?? 0)) * trade.quantity;
+    const tickers = filteredPortfolio.map(([ticker, _]) => ticker);
+    let fetchedDiv = document.getElementById('fetchedStocksContainer');
+    if (!fetchedDiv) {
+        fetchedDiv = document.createElement('div');
+        fetchedDiv.id = 'fetchedStocksContainer';
+    }
+    fetchedDiv.innerHTML = '';
+    getStockDataBatch(tickers, fetchedDiv).then(() => {
+        renderPortfolioTable(stocksContainer, Object.entries(portfolio).filter(([_, info]) => info.quantity > 0));
+        stocksContainer.appendChild(fetchedDiv);
+        const fetchAllBtn = document.getElementById('fetchAllPortfolioBtn');
+        if (fetchAllBtn) {
+            fetchAllBtn.onclick = function () {
+                fetchedDiv.innerHTML = '';
+                getStockDataBatch(tickers, fetchedDiv).then(() => {
+                    renderPortfolioTable(stocksContainer, Object.entries(portfolio).filter(([_, info]) => info.quantity > 0));
+                });
+            };
         }
     });
-    // Calculate unrealized P/L from current portfolio
-    Object.values(portfolio).forEach(info => {
-        if (info.quantity > 0) {
-            unrealized += (info.lastPrice - info.avgBuyPrice) * info.quantity;
-        }
-    });
-    return {
-        realized: realized.toFixed(2),
-        unrealized: unrealized.toFixed(2),
-        total: (realized + unrealized).toFixed(2)
-    };
+    renderPortfolioTable(stocksContainer, filteredPortfolio);
+    stocksContainer.appendChild(fetchedDiv);
 }
-
-const TRADE_HISTORY_KEY = 'pretendTradeHistory';
-let tradeHistory = [];
-
-// Load trade history from localStorage
-function loadTradeHistoryFromStorage() {
-    const stored = localStorage.getItem(TRADE_HISTORY_KEY);
-    tradeHistory = stored ? JSON.parse(stored) : [];
-}
-
-// Save trade history to localStorage
-function saveTradeHistoryToStorage() {
-    localStorage.setItem(TRADE_HISTORY_KEY, JSON.stringify(tradeHistory));
-}
-
-let tradeHistoryVisible = false;
 
 function renderTradeHistoryView() {
     const container = document.getElementById('tradeHistoryContainer');
@@ -785,8 +411,6 @@ function renderTradeHistoryView() {
         return;
     }
     container.style.display = 'block';
-
-    // Performance summary
     const perf = calculatePerformance();
     let html = `
         <div class="performance-summary polished-summary">
@@ -813,12 +437,9 @@ function renderTradeHistoryView() {
                 </thead>
                 <tbody id="tradeHistoryRows">
     `;
-
-    // Show only last 5 trades, with ellipsis if more
     const maxToShow = 5;
     const totalTrades = tradeHistory.length;
     const lastTrades = tradeHistory.slice(-maxToShow).reverse();
-
     lastTrades.forEach(trade => {
         html += `<tr>
             <td>${new Date(trade.date).toLocaleString()}</td>
@@ -830,17 +451,13 @@ function renderTradeHistoryView() {
             <td>$${trade.total.toFixed(2)}</td>
         </tr>`;
     });
-
     if (totalTrades > maxToShow) {
         html += `<tr id="tradeHistoryEllipsis" style="cursor:pointer;text-align:center;">
             <td colspan="7" style="font-size:1.5em;">&#8230;</td>
         </tr>`;
     }
-
     html += `</tbody></table></div>`;
     container.innerHTML = html;
-
-    // Ellipsis click handler to show all trades
     if (totalTrades > maxToShow) {
         document.getElementById('tradeHistoryEllipsis').onclick = function () {
             const rows = document.getElementById('tradeHistoryRows');
@@ -860,109 +477,287 @@ function renderTradeHistoryView() {
     }
 }
 
-function showToast(message, duration = 3000) {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toastContainer';
-        toastContainer.style.position = 'fixed';
-        toastContainer.style.bottom = '30px';
-        toastContainer.style.left = '50%';
-        toastContainer.style.transform = 'translateX(-50%)';
-        toastContainer.style.zIndex = '9999';
-        document.body.appendChild(toastContainer);
+// --- STOCK DATA FETCHING ---
+async function getStockDataBatch(tickerArray, renderContainer) {
+    if (!renderContainer) {
+        clearLoadedStocks();
+        renderContainer = document.getElementById('stocksContainer');
     }
-
-    // Create toast message
-    const toast = document.createElement('div');
-    toast.textContent = message;
-    toast.style.background = '#333';
-    toast.style.color = '#fff';
-    toast.style.padding = '12px 24px';
-    toast.style.marginTop = '8px';
-    toast.style.borderRadius = '6px';
-    toast.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-    toast.style.fontSize = '1em';
-    toast.style.opacity = '0.95';
-    toastContainer.appendChild(toast);
-
-    // Remove toast after duration
-    setTimeout(() => {
-        toast.remove();
-        // Remove container if empty
-        if (!toastContainer.hasChildNodes()) {
-            toastContainer.remove();
+    const uniqueTickers = [...new Set(tickerArray)];
+    const tickerString = uniqueTickers.join(',');
+    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${tickerString}?apikey=${API_KEY}&timeseries=${weeksToFetch * 7}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.historical && data.symbol) {
+            const stockName = stockDescriptions[data.symbol] || data.symbol;
+            const historical = data.historical;
+            if (Array.isArray(historical) && historical.length) {
+                historical.reverse();
+                if (weeksToFetch >= 16) {
+                    const blockSize = 90;
+                    for (let i = 0; i < historical.length; i += blockSize) {
+                        const block = historical.slice(i, i + blockSize);
+                        const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
+                        renderStockBlock(data.symbol, stockName, block, blockLabel, renderContainer);
+                    }
+                } else {
+                    renderStockBlock(data.symbol, stockName, historical, null, renderContainer);
+                }
+            }
+            return;
         }
-    }, duration);
+        if (Array.isArray(data.historicalStockList)) {
+            const returnedSymbols = new Set(data.historicalStockList.map(stock => stock.symbol));
+            data.historicalStockList.forEach(stock => {
+                const { symbol, historical } = stock;
+                if (!Array.isArray(historical) || !historical.length) return;
+                const stockName = stockDescriptions[symbol] || symbol;
+                historical.reverse();
+                if (portfolio[symbol]) {
+                    portfolio[symbol].lastPrice = historical[historical.length - 1].close;
+                }
+                if (weeksToFetch >= 16) {
+                    const blockSize = 90;
+                    for (let i = 0; i < historical.length; i += blockSize) {
+                        const block = historical.slice(i, i + blockSize);
+                        const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
+                        renderStockBlock(symbol, stockName, block, blockLabel, renderContainer);
+                    }
+                } else {
+                    renderStockBlock(symbol, stockName, historical, null, renderContainer);
+                }
+            });
+            const missingTickers = uniqueTickers.filter(ticker => !returnedSymbols.has(ticker));
+            if (missingTickers.length) {
+                const chunks = chunkArray(missingTickers, 10);
+                for (const chunk of chunks) {
+                    await getStockDataBatch(chunk, renderContainer);
+                }
+            }
+            return;
+        }
+        savePortfolioToStorage();
+    } catch (error) {
+        console.error('Error fetching batch stock data:', error);
+    }
 }
 
-// Bankroll management
-const BANKROLL_KEY = 'pretendBankroll';
-let bankroll = 1000000;
-
-// Load bankroll from localStorage
-function loadBankrollFromStorage() {
-    const stored = localStorage.getItem(BANKROLL_KEY);
-    bankroll = stored ? parseFloat(stored) : 1000000;
-    updateBankrollDisplay();
-}
-
-// Save bankroll to localStorage
-function saveBankrollToStorage() {
-    localStorage.setItem(BANKROLL_KEY, bankroll.toString());
-    updateBankrollDisplay();
-}
-
-// Update bankroll display
-function updateBankrollDisplay() {
-    const el = document.getElementById('bankrollDisplay');
-    if (el) {
-        el.textContent = `Available Cash: $${(bankroll ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        if (bankroll < 0) {
-            el.style.background = '#E74C3C'; // Red for negative
-            el.style.border = '2px solid #C0392B';
-            el.style.color = '#fff';
-        } else if (bankroll === 0) {
-            el.style.background = '#BDC3C7'; // Grey for zero
-            el.style.border = '2px solid #7F8C8D';
-            el.style.color = '#333';
+async function getStockData(stockTicker) {
+    const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${stockTicker}?apikey=${API_KEY}&timeseries=${weeksToFetch * 7}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        const stockData = data.historical;
+        if (!stockData || !stockData.length) {
+            console.warn(`No historical data available for ticker: ${stockTicker}`);
+            return;
+        }
+        const stockName = stockDescriptions[stockTicker] || stockTicker;
+        const stocksContainer = document.getElementById('stocksContainer');
+        stockData.reverse();
+        if (weeksToFetch >= 16) {
+            const blockSize = 90;
+            for (let i = 0; i < stockData.length; i += blockSize) {
+                const block = stockData.slice(i, i + blockSize);
+                const blockLabel = `Q${Math.floor(i / blockSize) + 1}`;
+                renderStockBlock(stockTicker, stockName, block, blockLabel, stocksContainer);
+            }
         } else {
-            el.style.background = '';
-            el.style.border = '';
-            el.style.color = '';
+            renderStockBlock(stockTicker, stockName, stockData, null, stocksContainer);
         }
+    } catch (error) {
+        console.error(`Error fetching stock data for ticker: ${stockTicker}`, error);
     }
 }
 
-function clearLoadedStocks() {
+function renderStockBlock(ticker, name, dataBlock, blockLabel, container) {
+    const stockDiv = document.createElement('div');
+    stockDiv.classList.add('stock');
+    if (blockLabel) stockDiv.classList.add('quarterblock');
+    stockDiv.innerHTML = `
+        <h2>${ticker}${blockLabel ? ` - ${blockLabel}` : ''}</h2>
+        <div class="description">${name}</div>
+        <table>
+            <tr><th>Date</th><th>Price</th><th>Change</th></tr>
+        </table>
+    `;
+    container.appendChild(stockDiv);
+    const stockTable = stockDiv.querySelector('table');
+    let highest = -Infinity, lowest = Infinity;
+    let highDate = null, lowDate = null;
+    dataBlock.forEach(day => {
+        if (day.close > highest) {
+            highest = day.close;
+            highDate = day.date;
+        }
+        if (day.close < lowest) {
+            lowest = day.close;
+            lowDate = day.date;
+        }
+    });
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .positive { background-color: #2ECC71; color: white; }
+        .negative { background-color: #E74C3C; color: white; }
+        .neutral { background-color: #BDC3C7; color: black; }
+        .topweeks { border: 3px solid #F1C40F; }
+        .lowestprice { background-color: #8E44AD; color: white; }
+    `;
+    document.head.appendChild(style);
+    let previousPrice = null;
+    dataBlock.forEach((day, index) => {
+        const change = previousPrice !== null ? (day.close - previousPrice).toFixed(2) : '�';
+        let rowClass = '';
+        if (day.date === highDate) {
+            rowClass = 'topweeks';
+        } else if (day.date === lowDate) {
+            rowClass = 'lowestprice';
+        } else if (previousPrice !== null) {
+            rowClass = day.close > previousPrice ? 'positive' : 'negative';
+        } else {
+            rowClass = 'neutral';
+        }
+        const row = document.createElement('tr');
+        row.className = rowClass;
+        row.innerHTML = `<td>${day.date}</td><td>${day.close}</td><td>${change}</td>`;
+        stockTable.appendChild(row);
+        previousPrice = day.close;
+    });
+    renderTradeControls(ticker, name, dataBlock[dataBlock.length - 1].close, stockDiv);
+}
+
+function renderTradeControls(ticker, name, lastPrice, container) {
+    const safeName = name.replace(/'/g, "\\'");
+    const controls = document.createElement('div');
+    controls.className = 'trade-controls';
+    controls.innerHTML = `
+        <button class="sell-btn" title="Sell shares"
+            onclick="sellByDollarAmount('${ticker}','${safeName}',${lastPrice},'tradeQty_${ticker}')">
+            Sell
+        </button>
+        <input type="number" min="1" value="" id="tradeQty_${ticker}" placeholder="$" title="Dollar amount to trade">
+        <button class="buy-btn" title="Buy shares"
+            onclick="buyByDollarAmount('${ticker}','${safeName}',${lastPrice},'tradeQty_${ticker}')">
+            Buy
+        </button>
+    `;
+    container.appendChild(controls);
+}
+
+function buyByDollarAmount(ticker, name, lastPrice, inputId) {
+    const dollarAmount = parseFloat(document.getElementById(inputId).value);
+    if (isNaN(dollarAmount) || dollarAmount <= 0) {
+        alert("Enter a valid dollar amount.");
+        return;
+    }
+    const shares = dollarAmount / lastPrice;
+    if (shares <= 0) {
+        alert("Dollar amount too low to buy any shares.");
+        return;
+    }
+    updatePortfolio(ticker, name, lastPrice, 'buy', shares);
+    showToast(`Bought $${dollarAmount.toFixed(2)} of ${ticker} (${shares.toFixed(4)} shares)`);
+}
+
+function sellByDollarAmount(ticker, name, lastPrice, inputId) {
+    const dollarAmount = parseFloat(document.getElementById(inputId).value);
+    if (isNaN(dollarAmount) || dollarAmount <= 0) {
+        alert("Enter a valid dollar amount.");
+        return;
+    }
+    const shares = dollarAmount / lastPrice;
+    if (shares <= 0) {
+        alert("Dollar amount too low to sell any shares.");
+        return;
+    }
+    updatePortfolio(ticker, name, lastPrice, 'sell', shares);
+    showToast(`Sold $${dollarAmount.toFixed(2)} of ${ticker} (${shares.toFixed(4)} shares)`);
+}
+
+function loadSelectedStockArray() {
+    const select = document.getElementById('stockArraySelectSelect');
+    const selectedArrayName = select.value;
+    if (!selectedArrayName) return;
+    if (selectedArrayName === '__portfolio__') {
+        showPortfolioInStocksContainer();
+        return;
+    }
+    const selectedArray = stockArrays[selectedArrayName];
+    if (!selectedArray || !selectedArray.length) return;
     const stocksContainer = document.getElementById('stocksContainer');
     stocksContainer.innerHTML = '';
     stocksContainer.dataset.showingPortfolio = "false";
-    // Optionally reset the Show Portfolio button text if needed
-    const btn = document.getElementById('viewPortfolioBtn');
-    if (btn) btn.textContent = "Show Portfolio";
+    const uniqueTickers = [...new Set(selectedArray)];
+    getStockDataBatch(uniqueTickers);
+}
 
-    // Only reset dropdown if called from the Clear Loaded Stocks button
-    if (
-        window.event &&
-        window.event.target &&
-        window.event.target.id === 'clearLoadedStocksBtn'
-    ) {
-        const categoryDropdown = document.getElementById('stockArraySelectSelect');
-        if (categoryDropdown) {
-            categoryDropdown.value = "";
+function updateWeeksToFetch() {
+    const input = document.getElementById('weeksInput');
+    weeksToFetch = parseInt(input.value);
+    loadSelectedStockArray();
+}
+
+function fetchManualStock() {
+    const input = document.getElementById('manualTicker').value.trim();
+    if (!input) return;
+    const clearBoard = document.getElementById('clearBoardToggle').checked;
+    const ticker = input.toUpperCase();
+    if (stockDescriptions.hasOwnProperty(ticker)) {
+        if (clearBoard) {
+            clearLoadedStocks();
         }
+        getStockData(ticker);
+    } else {
+        if (clearBoard) {
+            clearLoadedStocks();
+        }
+        lookupTickerByName(input, false);
     }
 }
 
-// Toggle button logic
-document.addEventListener('DOMContentLoaded', () => {
+async function lookupTickerByName(name, clearBoard) {
+    const url = `https://financialmodelingprep.com/api/v3/search?query=${encodeURIComponent(name)}&limit=1&exchange=NASDAQ&apikey=${API_KEY}`;
+    const response = await fetch(url);
+    const results = await response.json();
+    if (results.length === 0) {
+        alert(`No ticker found for "${name}".`);
+        return;
+    }
+    const ticker = results[0].symbol;
+    if (clearBoard) {
+        document.getElementById('stocksContainer').innerHTML = '';
+    }
+    getStockData(ticker);
+}
 
+// --- EVENT HANDLERS ---
+document.addEventListener('DOMContentLoaded', () => {
     loadPortfolioFromStorage();
     loadTradeHistoryFromStorage();
+    loadBankrollFromStorage();
+    categorizeStocksFromCSV();
+    populateTickerSuggestions();
+    const categories = parseEmbeddedCSV();
+    populateCategoryDropdown(categories);
+    renderTradeHistoryView();
+    document.body.classList.add('dark-mode');
 
-    // Trade History button event listener
+    // Hamburger menu
+    const menuBtn = document.getElementById('hamburgerMenuBtn');
+    const dropdown = document.getElementById('hamburgerDropdown');
+    if (menuBtn && dropdown) {
+        menuBtn.onclick = function () {
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        };
+        window.addEventListener('click', function (e) {
+            if (!menuBtn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+    }
+
+    // Trade History button
     const tradeHistoryBtn = document.getElementById('viewTradeHistoryBtn');
     if (tradeHistoryBtn) {
         tradeHistoryBtn.onclick = function () {
@@ -972,28 +767,21 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Insert Clear Loaded Stocks button to the left of Show/Hide Portfolio
+    // Portfolio and clear loaded stocks buttons
     const portfolioBtn = document.getElementById('viewPortfolioBtn');
     if (portfolioBtn) {
-        // Create the button
         const clearBtn = document.createElement('button');
         clearBtn.id = 'clearLoadedStocksBtn';
         clearBtn.textContent = 'Clear Loaded Stocks';
         clearBtn.style.marginRight = '8px';
-
-        // Insert before portfolioBtn
         portfolioBtn.parentNode.insertBefore(clearBtn, portfolioBtn);
-
-        // Add event handler
         clearBtn.onclick = clearLoadedStocks;
-
-        // Existing portfolioBtn handler
         portfolioBtn.onclick = function () {
             togglePortfolioView();
         };
     }
 
-    // Enable Enter key to fetch from manual input
+    // Manual ticker input
     const manualInput = document.getElementById('manualTicker');
     if (manualInput) {
         manualInput.addEventListener('keydown', function (e) {
@@ -1003,27 +791,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initial bankroll display
-    loadBankrollFromStorage();
-
-    // Initial render
-    renderTradeHistoryView();
-
     console.log('Page loaded. Please select a stock array to fetch data.');
-
-    // Apply dark mode once
-    document.body.classList.add('dark-mode');
-
-    // Parse CSV and categorize stocks
-    categorizeStocksFromCSV();
-
-    // Populate ticker suggestions
-    populateTickerSuggestions();
-
-    // Populate category dropdown
-    const categories = parseEmbeddedCSV();
-    populateCategoryDropdown(categories);
 });
 
-
-
+// --- PORTFOLIO VIEW TOGGLE ---
+async function togglePortfolioView() {
+    const btn = document.getElementById('viewPortfolioBtn');
+    const stocksContainer = document.getElementById('stocksContainer');
+    const isShowing = stocksContainer.dataset.showingPortfolio === "true";
+    if (isShowing) {
+        stocksContainer.innerHTML = '';
+        stocksContainer.dataset.showingPortfolio = "false";
+        btn.textContent = "Show Portfolio";
+    } else {
+        showPortfolioInStocksContainer();
+        btn.textContent = "Hide Portfolio";
+    }
+}
