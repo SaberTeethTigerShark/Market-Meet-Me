@@ -395,6 +395,7 @@ function showPortfolioInStocksContainer() {
                 fetchedDiv.innerHTML = '';
                 getStockDataBatch(tickers, fetchedDiv).then(() => {
                     renderPortfolioTable(stocksContainer, Object.entries(portfolio).filter(([_, info]) => info.quantity > 0));
+                    stocksContainer.appendChild(fetchedDiv); // <-- Add this line
                 });
             };
         }
@@ -479,17 +480,27 @@ function renderTradeHistoryView() {
 
 // --- STOCK DATA FETCHING ---
 async function getStockDataBatch(tickerArray, renderContainer) {
+    console.log('[getStockDataBatch] Called with tickers:', tickerArray);
+
     if (!renderContainer) {
         clearLoadedStocks();
         renderContainer = document.getElementById('stocksContainer');
     }
+
     const uniqueTickers = [...new Set(tickerArray)];
+    console.log('[getStockDataBatch] Unique tickers:', uniqueTickers);
+
     const tickerString = uniqueTickers.join(',');
     const url = `https://financialmodelingprep.com/api/v3/historical-price-full/${tickerString}?apikey=${API_KEY}&timeseries=${weeksToFetch * 7}`;
+    console.log('[getStockDataBatch] Fetching URL:', url);
+
     try {
         const response = await fetch(url);
         const data = await response.json();
+        console.log('[getStockDataBatch] API response:', data);
+
         if (data.historical && data.symbol) {
+            console.log('[getStockDataBatch] Single symbol response:', data.symbol);
             const stockName = stockDescriptions[data.symbol] || data.symbol;
             const historical = data.historical;
             if (Array.isArray(historical) && historical.length) {
@@ -507,7 +518,9 @@ async function getStockDataBatch(tickerArray, renderContainer) {
             }
             return;
         }
+
         if (Array.isArray(data.historicalStockList)) {
+            console.log('[getStockDataBatch] Batch response for symbols:', data.historicalStockList.map(stock => stock.symbol));
             const returnedSymbols = new Set(data.historicalStockList.map(stock => stock.symbol));
             data.historicalStockList.forEach(stock => {
                 const { symbol, historical } = stock;
@@ -528,15 +541,20 @@ async function getStockDataBatch(tickerArray, renderContainer) {
                     renderStockBlock(symbol, stockName, historical, null, renderContainer);
                 }
             });
+
             const missingTickers = uniqueTickers.filter(ticker => !returnedSymbols.has(ticker));
             if (missingTickers.length) {
-                const chunks = chunkArray(missingTickers, 10);
+                console.warn('[getStockDataBatch] Missing tickers, will refetch in chunks:', missingTickers);
+                const chunks = chunkArray(missingTickers, 5);
                 for (const chunk of chunks) {
+                    console.log('[getStockDataBatch] Refetching chunk:', chunk);
                     await getStockDataBatch(chunk, renderContainer);
                 }
             }
             return;
         }
+
+        console.warn('[getStockDataBatch] Unexpected API response format:', data);
         savePortfolioToStorage();
     } catch (error) {
         console.error('Error fetching batch stock data:', error);
