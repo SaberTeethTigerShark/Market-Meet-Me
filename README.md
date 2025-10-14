@@ -9,7 +9,7 @@ To enable data retrieval features, you must obtain an API key from [Financial Mo
 Once you have your API key:
 
 1. Open the `main.js` file using a text editor such as Notepad or Notepad++.
-2. Locate the following line (approximately line 5):
+2. Locate the following line (approximately line 4):
 
    const API_KEY = 'API KEY HERE';
 
@@ -21,13 +21,13 @@ Save the file and reload it in your browser. The program will now be fully funct
 
 Enjoy exploring the data—happy viewing!
 
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 Functionality:
 
 ### 🔹 `#manualStockInput`
 - **Purpose**: Fetch data for a single stock.
-- **How to use**: Type a ticker or company name into the input field, then click **Fetch**. If “Clear previous stocks” is checked, it wipes the current display before loading the new one.
+- **How to use**: Type a ticker or company name into the input field, then click **Fetch** or press Enter. If “Clear previous stocks” is checked, it wipes the current display before loading the new one.
 
 ---
 
@@ -97,7 +97,19 @@ Functionality:
 
 ---
 
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+### 🔹 Portfolio Table Fetch All Button
+- **Purpose**: Fetches and updates all stocks in your portfolio at once.
+- **How to use**: Click the **Fetch All** button at the top of the portfolio table to refresh all portfolio stock data.
+
+---
+
+### 🔹 Quick Fetch Button
+- **Purpose**: Instantly fetches data for a single stock in your portfolio.
+- **How to use**: Click the magnifying glass button next to a ticker in the portfolio table.
+
+---
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 In-Program Function Documentation
 
@@ -112,66 +124,25 @@ In-Program Function Documentation
 
 ---
 
-// categorizeStocksFromCSV()
-// Parses embedded CSV data to map stock symbols to their names, categorize them by sector and sub-industry,
-// and return a sorted list of all unique categories.
+//  categorizeStocksFromCSV()
+//  Parses embedded CSV data to map stock symbols to their names, categorize them by sector and sub-industry,
+//  and return a sorted list of all unique categories.
 
 ---
 
-// populateCategoryDropdown(categoryList)
-// Populates a dropdown menu with category options using the provided list, resetting its contents before insertion.
+//  populateCategoryDropdown(categoryList)
+//  Populates a dropdown menu with category options using the provided list, resetting its contents before insertion.
 
 ---
 
-// populateTickerSuggestions()
+//  populateTickerSuggestions()
 //  Generates autocomplete suggestions for stock tickers by parsing embedded CSV data and populating
 //  a datalist element with ticker-name pairs.
 
 ---
 
-//  loadSelectedStockArray()
-//  Loads the selected stock category from a dropdown, deduplicates its tickers, and fetches their data in a single batch.
-//  If "Portfolio" is selected, displays the user's portfolio instead.
-
----
-
-//  lookupTickerByName(name, clearBoard)
-//  Searches for a NASDAQ ticker symbol by company name using an external API,
-//  optionally clears the display, and fetches stock data if found.
-
----
-
-//  updateWeeksToFetch()
-//  Updates the global `weeksToFetch` value based on user input and reloads the currently selected stock array accordingly.
-
----
-
-//  fetchManualStock()
-//  Attempts to fetch stock data using a manually entered ticker symbol,
-//  falling back to name-based lookup if no direct match is found.
-
----
-
-// getStockData(stockTicker)
-// Fetches historical stock data for a given ticker, reverses it chronologically,
-// and renders it in blocks based on the selected time range.
-
----
-
 //  chunkArray(array, size)
 //  Splits an array into smaller chunks of a specified size and returns them as a new array of arrays.
-
----
-
-//  getStockDataBatch(tickerArray)
-//  Fetches historical stock data for multiple tickers in a single API call, renders each dataset,
-//  and recursively retries any missing tickers in manageable chunks.
-
----
-
-//  renderStockBlock(ticker, name, dataBlock, blockLabel, container)
-//  Renders a visual block of stock data with dynamic styling for price changes,
-//  highlighting the highest and lowest closing days, and includes trade controls for each stock.
 
 ---
 
@@ -185,13 +156,88 @@ In-Program Function Documentation
 
 ---
 
+//  loadTradeHistoryFromStorage()
+//  Loads the user's trade history from localStorage.
+
+---
+
+//  saveTradeHistoryToStorage()
+//  Saves the user's trade history to localStorage.
+
+---
+
 //  clearPortfolioLocalStorage()
-//  Clears the portfolio from localStorage and resets the in-memory portfolio.
+//  Clears the portfolio and trade history from localStorage, resets the in-memory portfolio, bankroll, and updates the display.
 
 ---
 
 //  updatePortfolio(ticker, name, price, action, qty = 1)
 //  Updates the portfolio based on buy/sell actions, recalculates average buy price, and refreshes the portfolio view if active.
+
+---
+
+//  calculatePerformance()
+//  Calculates realized and unrealized profit/loss for the portfolio and trade history.
+
+---
+
+//  loadBankrollFromStorage()
+//  Loads the user's bankroll (cash balance) from localStorage and updates the display.
+
+---
+
+//  saveBankrollToStorage()
+//  Saves the user's bankroll to localStorage and updates the display.
+
+---
+
+//  updateBankrollDisplay()
+//  Updates the bankroll display element with the current cash balance and highlights status.
+
+---
+
+//  showToast(message, duration)
+//  Displays a temporary toast notification with the given message.
+
+---
+
+//  clearLoadedStocks()
+//  Clears all loaded stock data from the display, resets the portfolio view state, and (if triggered by the Clear Loaded Stocks button) resets the category dropdown selection.
+
+---
+
+//  closeHamburgerDropdown()
+//  Closes the hamburger dropdown menu.
+
+---
+
+//  renderPortfolioTable(stocksContainer, filteredPortfolio)
+//  Renders the portfolio table with trade controls, quick fetch, and fetch all buttons.
+
+---
+
+//  showPortfolioInStocksContainer()
+//  Displays the user's portfolio in the stocks container, including trade controls and quick fetch buttons. Also fetches latest prices for all portfolio stocks.
+
+---
+
+//  renderTradeHistoryView()
+//  Renders the trade history and performance summary in the trade history container. Shows last 5 trades and allows expansion to full history.
+
+---
+
+//  getStockDataBatch(tickerArray, renderContainer)
+//  Fetches historical stock data for multiple tickers in a single API call, renders each dataset, and recursively retries any missing tickers in manageable chunks. Updates portfolio prices.
+
+---
+
+//  getStockData(stockTicker)
+//  Fetches historical stock data for a single ticker, reverses it chronologically, and renders it in blocks based on the selected time range.
+
+---
+
+//  renderStockBlock(ticker, name, dataBlock, blockLabel, container)
+//  Renders a visual block of stock data with dynamic styling for price changes, highlighting the highest and lowest closing days, and includes trade controls for each stock.
 
 ---
 
@@ -210,13 +256,23 @@ In-Program Function Documentation
 
 ---
 
-//  showPortfolioInStocksContainer()
-//  Displays the user's portfolio in the stocks container, including trade controls and quick fetch buttons.
+//  loadSelectedStockArray()
+//  Loads the selected stock category from a dropdown, deduplicates its tickers, and fetches their data in a single batch. If "Portfolio" is selected, displays the user's portfolio instead.
 
 ---
 
-//  closeHamburgerDropdown()
-//  Closes the hamburger dropdown menu.
+//  updateWeeksToFetch()
+//  Updates the global `weeksToFetch` value based on user input and reloads the currently selected stock array accordingly.
+
+---
+
+//  fetchManualStock()
+//  Attempts to fetch stock data using a manually entered ticker symbol, falling back to name-based lookup if no direct match is found.
+
+---
+
+//  lookupTickerByName(name, clearBoard)
+//  Searches for a NASDAQ ticker symbol by company name using an external API, optionally clears the display, and fetches stock data if found.
 
 ---
 
@@ -225,54 +281,9 @@ In-Program Function Documentation
 
 ---
 
-//  calculatePerformance()
-//  Calculates realized and unrealized profit/loss for the portfolio and trade history.
-
----
-
-//  loadTradeHistoryFromStorage()
-//  Loads the user's trade history from localStorage.
-
----
-
-//  saveTradeHistoryToStorage()
-//  Saves the user's trade history to localStorage.
-
----
-
-//  renderTradeHistoryView()
-//  Renders the trade history and performance summary in the trade history container.
-
----
-
-//  showToast(message, duration)
-//  Displays a temporary toast notification with the given message.
-
----
-
-//  loadBankrollFromStorage()
-//  Loads the user's bankroll (cash balance) from localStorage.
-
----
-
-//  saveBankrollToStorage()
-//  Saves the user's bankroll to localStorage.
-
----
-
-//  updateBankrollDisplay()
-//  Updates the bankroll display element with the current cash balance and highlights status.
-
----
-
-//  clearLoadedStocks()
-//  Clears all loaded stock data from the display, resets the portfolio view state, and (if triggered by the Clear Loaded Stocks button) resets the category dropdown selection.
-
----
-
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 Page Initialization
-- On page load, enables dark mode, loads the portfolio and trade history, parses and categorizes stocks, populates ticker suggestions and category dropdown, and sets up all controls and event listeners.
+- On page load, enables dark mode, loads the portfolio and trade history, parses and categorizes stocks, populates ticker suggestions and category dropdown, and sets up all controls and event listeners. Hamburger menu, trade history, portfolio, and clear loaded stocks buttons are initialized. Manual ticker input supports Enter key for quick fetch.
 
 ---
