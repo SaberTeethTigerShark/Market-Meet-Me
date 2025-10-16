@@ -159,6 +159,19 @@ function clearPortfolioLocalStorage() {
     closeHamburgerDropdown();
 }
 
+// --- PORTFOLIO & TRADE HISTORY ---
+// Helper to calculate total portfolio value and unrealized P/L
+function getPortfolioValueAndUnrealizedPL() {
+    let value = 0, unrealized = 0;
+    Object.values(portfolio).forEach(info => {
+        if (info.quantity > 0) {
+            value += info.quantity * info.lastPrice;
+            unrealized += (info.lastPrice - info.avgBuyPrice) * info.quantity;
+        }
+    });
+    return { value, unrealized };
+}
+
 function updatePortfolio(ticker, name, price, action, qty = 1) {
     if (!portfolio[ticker]) {
         portfolio[ticker] = { name, quantity: 0, avgBuyPrice: 0, lastPrice: price };
@@ -166,32 +179,75 @@ function updatePortfolio(ticker, name, price, action, qty = 1) {
     let info = portfolio[ticker];
     info.lastPrice = price;
 
+    // Calculate trade P/L and cumulative P/L
+    let tradePL = 0;
+    let lastCumulativePL = tradeHistory.length > 0 ? (tradeHistory[tradeHistory.length - 1].cumulativePL || 0) : 0;
+
+    if (action === 'sell' || action === 'sellAll') {
+        // Use avgBuyPrice before this sell
+        tradePL = (price - info.avgBuyPrice) * qty;
+    }
+
     if (action === 'buy' || action === 'sell') {
-        tradeHistory.push({
+        // Update portfolio before saving trade
+        if (action === 'buy') {
+            info.avgBuyPrice = ((info.avgBuyPrice * info.quantity) + (price * qty)) / (info.quantity + qty);
+            info.quantity += qty;
+            bankroll -= price * qty;
+        } else if (action === 'sell') {
+            info.quantity = Math.max(0, info.quantity - qty);
+            if (info.quantity === 0) info.avgBuyPrice = 0;
+            bankroll += price * qty;
+        }
+        // After portfolio update, get new values
+        const { value: portfolioValueAfter, unrealized: unrealizedPLAfter } = getPortfolioValueAndUnrealizedPL();
+        const tradeEntry = {
             ticker,
             name,
             action,
             quantity: qty,
             price,
             total: qty * price,
-            date: new Date().toISOString()
-        });
+            date: new Date().toISOString(),
+            bankrollAfter: bankroll,
+            tradePL: action === 'sell' ? tradePL : 0,
+            cumulativePL: action === 'sell' ? lastCumulativePL + tradePL : lastCumulativePL,
+            note: '',
+            portfolioValueAfter,
+            unrealizedPLAfter
+        };
+        tradeHistory.push(tradeEntry);
         saveTradeHistoryToStorage();
     }
 
-    if (action === 'buy') {
-        info.avgBuyPrice = ((info.avgBuyPrice * info.quantity) + (price * qty)) / (info.quantity + qty);
-        info.quantity += qty;
-        bankroll -= price * qty;
-    } else if (action === 'sell') {
-        info.quantity = Math.max(0, info.quantity - qty);
-        if (info.quantity === 0) info.avgBuyPrice = 0;
-        bankroll += price * qty;
-    } else if (action === 'sellAll') {
-        bankroll += info.lastPrice * info.quantity;
-        info.quantity = 0;
-        info.avgBuyPrice = 0;
+    if (action === 'sellAll') {
+        const sellQty = info.quantity;
+        if (sellQty > 0) {
+            tradePL = (info.lastPrice - info.avgBuyPrice) * sellQty;
+            bankroll += info.lastPrice * sellQty;
+            info.quantity = 0;
+            info.avgBuyPrice = 0;
+            const { value: portfolioValueAfter, unrealized: unrealizedPLAfter } = getPortfolioValueAndUnrealizedPL();
+            const tradeEntry = {
+                ticker,
+                name,
+                action: 'sell',
+                quantity: sellQty,
+                price: info.lastPrice,
+                total: sellQty * info.lastPrice,
+                date: new Date().toISOString(),
+                bankrollAfter: bankroll,
+                tradePL: tradePL,
+                cumulativePL: lastCumulativePL + tradePL,
+                note: '',
+                portfolioValueAfter,
+                unrealizedPLAfter
+            };
+            tradeHistory.push(tradeEntry);
+            saveTradeHistoryToStorage();
+        }
     }
+
     savePortfolioToStorage();
     saveBankrollToStorage();
     if (document.getElementById('stocksContainer').dataset.showingPortfolio === "true") {
@@ -202,22 +258,103 @@ function updatePortfolio(ticker, name, price, action, qty = 1) {
     }
 }
 
+// --- PERFORMANCE METRICS HELPERS ---
+function stdDev(arr) {
+    if (arr.length < 2) return 0;
+    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+    const variance = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (arr.length - 1);
+    return Math.sqrt(variance);
+}
+
 function calculatePerformance() {
-    let realized = 0, unrealized = 0;
+    let realized = 0, unrealized = 0, invested = 0;
+    let wins = 0, losses = 0, totalPL = 0, tradeCount = 0;
+    let largestWin = -Infinity, largestLoss = Infinity;
+    let returns = [];
+    let startBankroll = 1000000;
+    let firstTradeDate = tradeHistory.length ? new Date(tradeHistory[0].date) : null;
+    let lastTradeDate = tradeHistory.length ? new Date(tradeHistory[tradeHistory.length - 1].date) : null;
+    let holdingPeriods = [];
+    let sellDates = {};
+    let buyDates = {};
+
+    // Track holding periods by ticker
     tradeHistory.forEach(trade => {
+        if (trade.action === 'buy') {
+            if (!buyDates[trade.ticker]) buyDates[trade.ticker] = [];
+            buyDates[trade.ticker].push(new Date(trade.date));
+            invested += trade.total;
+        }
         if (trade.action === 'sell' || trade.action === 'sellAll') {
-            realized += (trade.price - (portfolio[trade.ticker]?.avgBuyPrice ?? 0)) * trade.quantity;
+            let pl = trade.tradePL;
+            realized += pl;
+            totalPL += pl;
+            tradeCount++;
+            if (pl > 0) wins++;
+            if (pl < 0) losses++;
+            if (pl > largestWin) largestWin = pl;
+            if (pl < largestLoss) largestLoss = pl;
+            returns.push(pl);
+
+            // Holding period: match to earliest unmatched buy
+            if (buyDates[trade.ticker] && buyDates[trade.ticker].length) {
+                let buyDate = buyDates[trade.ticker].shift();
+                let sellDate = new Date(trade.date);
+                let daysHeld = (sellDate - buyDate) / (1000 * 60 * 60 * 24);
+                holdingPeriods.push(daysHeld);
+            }
         }
     });
+
     Object.values(portfolio).forEach(info => {
         if (info.quantity > 0) {
             unrealized += (info.lastPrice - info.avgBuyPrice) * info.quantity;
         }
     });
+
+    // Calculate win rate and averages
+    let winRate = tradeCount ? (wins / tradeCount * 100).toFixed(1) : '0.0';
+    let avgPL = tradeCount ? (totalPL / tradeCount).toFixed(2) : '0.00';
+    let sharpe = returns.length > 1
+        ? (avgPL / (stdDev(returns) || 1)).toFixed(2)
+        : 'N/A';
+
+    // Calculate max drawdown (simplified)
+    let maxDrawdown = 0, peak = startBankroll;
+    let equity = startBankroll;
+    tradeHistory.forEach(trade => {
+        equity = trade.bankrollAfter + (trade.portfolioValueAfter || 0);
+        if (equity > peak) peak = equity;
+        let drawdown = (peak - equity);
+        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+    });
+
+    // Annualized return (if enough data)
+    let annualizedReturn = 'N/A';
+    if (firstTradeDate && lastTradeDate && firstTradeDate < lastTradeDate) {
+        let years = (lastTradeDate - firstTradeDate) / (365 * 24 * 60 * 60 * 1000);
+        let totalReturn = ((bankroll + unrealized + invested - startBankroll) / startBankroll);
+        annualizedReturn = years > 0 ? ((Math.pow(1 + totalReturn, 1 / years) - 1) * 100).toFixed(2) + '%' : 'N/A';
+    }
+
+    let avgHold = holdingPeriods.length
+        ? (holdingPeriods.reduce((a, b) => a + b, 0) / holdingPeriods.length).toFixed(1)
+        : 'N/A';
+
     return {
         realized: realized.toFixed(2),
         unrealized: unrealized.toFixed(2),
-        total: (realized + unrealized).toFixed(2)
+        total: (realized + unrealized).toFixed(2),
+        invested: invested.toFixed(2),
+        winRate,
+        avgPL,
+        largestWin: largestWin === -Infinity ? 'N/A' : largestWin.toFixed(2),
+        largestLoss: largestLoss === Infinity ? 'N/A' : largestLoss.toFixed(2),
+        sharpe,
+        tradeCount,
+        maxDrawdown: maxDrawdown.toFixed(2),
+        annualizedReturn,
+        avgHold
     };
 }
 
@@ -404,6 +541,7 @@ function showPortfolioInStocksContainer() {
     stocksContainer.appendChild(fetchedDiv);
 }
 
+// --- UI: TRADE HISTORY ---
 function renderTradeHistoryView() {
     const container = document.getElementById('tradeHistoryContainer');
     if (!tradeHistoryVisible) {
@@ -412,14 +550,20 @@ function renderTradeHistoryView() {
         return;
     }
     container.style.display = 'block';
+
+    // Calculate metrics
     const perf = calculatePerformance();
+    const { value: portfolioValue, unrealized } = getPortfolioValueAndUnrealizedPL();
+
+    // Show only the requested metrics
     let html = `
         <div class="performance-summary polished-summary">
             <h2>Performance Summary</h2>
             <div class="perf-row">
+                <span>Total Invested:</span> <span>$${perf.invested}</span>
+                <span>Current Value:</span> <span>$${portfolioValue.toFixed(2)}</span>
+                <span>Unrealized P/L:</span> <span class="perf-unrealized">$${unrealized.toFixed(2)}</span>
                 <span>Realized P/L:</span> <span class="perf-realized">$${perf.realized}</span>
-                <span>Unrealized P/L:</span> <span class="perf-unrealized">$${perf.unrealized}</span>
-                <span>Total Return:</span> <span class="perf-total">$${perf.total}</span>
             </div>
         </div>
         <h2 style="margin-top:24px;">Trade History</h2>
@@ -431,9 +575,14 @@ function renderTradeHistoryView() {
                         <th>Ticker</th>
                         <th>Name</th>
                         <th>Action</th>
-                        <th>Quantity</th>
+                        <th>Qty</th>
                         <th>Price</th>
                         <th>Total</th>
+                        <th>P/L</th>
+                        <th>Cumulative P/L</th>
+                        <th>Bankroll</th>
+                        <th>Portfolio Value</th>
+                        <th>Unrealized P/L</th>
                     </tr>
                 </thead>
                 <tbody id="tradeHistoryRows">
@@ -450,11 +599,16 @@ function renderTradeHistoryView() {
             <td>${trade.quantity.toFixed(4)}</td>
             <td>$${trade.price.toFixed(2)}</td>
             <td>$${trade.total.toFixed(2)}</td>
+            <td class="${trade.tradePL > 0 ? 'return-positive' : (trade.tradePL < 0 ? 'return-negative' : 'return-neutral')}">${trade.tradePL ? trade.tradePL.toFixed(2) : ''}</td>
+            <td>${trade.cumulativePL !== undefined ? trade.cumulativePL.toFixed(2) : ''}</td>
+            <td>$${trade.bankrollAfter !== undefined ? trade.bankrollAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td>
+            <td>$${trade.portfolioValueAfter !== undefined ? trade.portfolioValueAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td>
+            <td>${trade.unrealizedPLAfter !== undefined ? trade.unrealizedPLAfter.toFixed(2) : ''}</td>
         </tr>`;
     });
     if (totalTrades > maxToShow) {
         html += `<tr id="tradeHistoryEllipsis" style="cursor:pointer;text-align:center;">
-            <td colspan="7" style="font-size:1.5em;">&#8230;</td>
+            <td colspan="12" style="font-size:1.5em;">&#8230;</td>
         </tr>`;
     }
     html += `</tbody></table></div>`;
@@ -472,6 +626,11 @@ function renderTradeHistoryView() {
                     <td>${trade.quantity.toFixed(4)}</td>
                     <td>$${trade.price.toFixed(2)}</td>
                     <td>$${trade.total.toFixed(2)}</td>
+                    <td class="${trade.tradePL > 0 ? 'return-positive' : (trade.tradePL < 0 ? 'return-negative' : 'return-neutral')}">${trade.tradePL ? trade.tradePL.toFixed(2) : ''}</td>
+                    <td>${trade.cumulativePL !== undefined ? trade.cumulativePL.toFixed(2) : ''}</td>
+                    <td>$${trade.bankrollAfter !== undefined ? trade.bankrollAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td>
+                    <td>$${trade.portfolioValueAfter !== undefined ? trade.portfolioValueAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td>
+                    <td>${trade.unrealizedPLAfter !== undefined ? trade.unrealizedPLAfter.toFixed(2) : ''}</td>
                 </tr>`;
             });
         };
@@ -625,7 +784,7 @@ function renderStockBlock(ticker, name, dataBlock, blockLabel, container) {
     document.head.appendChild(style);
     let previousPrice = null;
     dataBlock.forEach((day, index) => {
-        const change = previousPrice !== null ? (day.close - previousPrice).toFixed(2) : '—';
+        const change = previousPrice !== null ? (day.close - previousPrice).toFixed(2) : '0.00';
         let rowClass = '';
         if (day.date === highDate) {
             rowClass = 'topweeks';

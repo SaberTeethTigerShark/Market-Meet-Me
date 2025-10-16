@@ -671,7 +671,7 @@ body.dark-mode .portfolio-table input[type="number"] {
 ========================= */
 #tradeHistoryContainer {
     margin: 32px auto;
-    max-width: 900px;
+    max-width: 90%;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.10);
